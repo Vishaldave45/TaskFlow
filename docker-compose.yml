@@ -19,7 +19,7 @@ services:
 
   web:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     container_name: taskflow_web
     restart: unless-stopped
@@ -34,7 +34,7 @@ services:
         python manage.py runserver 0.0.0.0:8000
       "
     volumes:
-      - .:/app
+      - ./backend:/app
     ports:
       - "8000:8000"
     environment:

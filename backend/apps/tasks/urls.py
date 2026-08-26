@@ -11,7 +11,7 @@ urlpatterns = [
     ),
 
     path(
-        "projects/<int:project_id>/tasks/<int:pk>/",
+        "tasks/<int:pk>/",
         TaskDetailView.as_view(),
         name="task-detail",
     ),
