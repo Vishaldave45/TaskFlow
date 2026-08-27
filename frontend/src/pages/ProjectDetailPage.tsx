@@ -615,7 +615,7 @@ export function ProjectDetailPage() {
         </Card>
 
         {/* Tabs: Kanban Board & Team Members */}
-        <Tabs variant="soft-rounded" colorScheme="brand">
+        <Tabs variant="soft-rounded">
           <TabList mb={6}>
             <Tab fontWeight="600" fontSize="sm">
               Kanban Board ({filteredTasks.length})
@@ -874,57 +874,65 @@ export function ProjectDetailPage() {
                       </Flex>
                     )}
 
-                    {/* Member Rows */}
-                    {members.map((member) => {
-                      const isMe = member.user.id === currentUser?.id
-                      return (
-                        <Flex
-                          key={member.id}
-                          justify="space-between"
-                          align="center"
-                          p={3.5}
-                          borderRadius="md"
-                          bg="surface.subtle"
-                          border="1px solid"
-                          borderColor="border.default"
-                        >
-                          <HStack spacing={3}>
-                            <Avatar size="sm" name={member.user.username} bg="slate.500" color="white" />
-                            <Box>
-                              <HStack spacing={1.5}>
-                                <Text fontSize="sm" fontWeight="600" color="ink.primary">
-                                  {member.user.username}
+                    {/* Non-Owner Collaborator Rows */}
+                    {members
+                      .filter((m) => m.user.id !== project?.owner?.id)
+                      .map((member) => {
+                        const isMe = member.user.id === currentUser?.id
+                        return (
+                          <Flex
+                            key={member.id}
+                            justify="space-between"
+                            align="center"
+                            p={3.5}
+                            borderRadius="md"
+                            bg="surface.subtle"
+                            border="1px solid"
+                            borderColor="border.default"
+                          >
+                            <HStack spacing={3}>
+                              <Avatar size="sm" name={member.user.username} bg="slate.500" color="white" />
+                              <Box>
+                                <HStack spacing={1.5}>
+                                  <Text fontSize="sm" fontWeight="600" color="ink.primary">
+                                    {member.user.username}
+                                  </Text>
+                                  {isMe && <Badge variant="neutral" fontSize="3xs">YOU</Badge>}
+                                </HStack>
+                                <Text fontSize="xs" color="ink.secondary">
+                                  {member.user.email}
                                 </Text>
-                                {isMe && <Badge variant="neutral" fontSize="3xs">YOU</Badge>}
-                              </HStack>
-                              <Text fontSize="xs" color="ink.secondary">
-                                {member.user.email}
-                              </Text>
-                            </Box>
-                          </HStack>
+                              </Box>
+                            </HStack>
 
-                          <HStack spacing={3}>
-                            <Badge variant="neutral" fontSize="2xs">
-                              COLLABORATOR
-                            </Badge>
+                            <HStack spacing={3}>
+                              <Badge variant="neutral" fontSize="2xs">
+                                COLLABORATOR
+                              </Badge>
 
-                            {/* Only owner can remove members */}
-                            {isOwner && (
-                              <Tooltip label="Remove collaborator" placement="top">
-                                <IconButton
-                                  aria-label="Remove collaborator"
-                                  icon={<Trash2 size={14} />}
-                                  variant="ghost"
-                                  size="xs"
-                                  color="state.error.text"
-                                  onClick={() => handleRemoveMember(member.user.id)}
-                                />
-                              </Tooltip>
-                            )}
-                          </HStack>
-                        </Flex>
-                      )
-                    })}
+                              {/* Only owner can remove collaborators */}
+                              {isOwner && (
+                                <Tooltip label="Remove collaborator" placement="top">
+                                  <IconButton
+                                    aria-label="Remove collaborator"
+                                    icon={<Trash2 size={14} />}
+                                    size="xs"
+                                    variant="ghost"
+                                    color="state.error.text"
+                                    onClick={() => handleRemoveMember(member.user.id)}
+                                  />
+                                </Tooltip>
+                              )}
+                            </HStack>
+                          </Flex>
+                        )
+                      })}
+
+                    {members.filter((m) => m.user.id !== project?.owner?.id).length === 0 && (
+                      <Text fontSize="xs" color="ink.muted" textAlign="center" py={4}>
+                        No additional collaborators invited yet. Use the button above to add team members.
+                      </Text>
+                    )}
                   </Stack>
                 </CardBody>
               </Card>
@@ -1072,7 +1080,7 @@ export function ProjectDetailPage() {
                 </Flex>
 
                 {/* Sub-Tabs: Details & Edit, Comments, Activity */}
-                <Tabs variant="enclosed" colorScheme="brand">
+                <Tabs variant="enclosed">
                   <TabList mb={4}>
                     <Tab fontSize="xs" fontWeight="600" gap={1.5}>
                       <FileText size={14} /> Details

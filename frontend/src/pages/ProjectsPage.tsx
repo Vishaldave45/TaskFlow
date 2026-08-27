@@ -156,7 +156,6 @@ export function ProjectsPage() {
           <Stack spacing={4}>
             <Tabs
               variant="soft-rounded"
-              colorScheme="brand"
               size="sm"
               onChange={(idx) => {
                 if (idx === 0) setTabFilter('ALL')
