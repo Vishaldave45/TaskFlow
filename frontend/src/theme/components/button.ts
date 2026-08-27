@@ -3,7 +3,7 @@ import { defineStyle, defineStyleConfig } from '@chakra-ui/react'
 const baseStyle = defineStyle({
   fontWeight: '600',
   borderRadius: 'sm', // 2px crisp radius
-  transition: 'all 0.1s ease-out',
+  transition: 'background-color 120ms ease-out, border-color 120ms ease-out, color 120ms ease-out, transform 120ms ease-out, box-shadow 120ms ease-out',
   cursor: 'pointer',
   _focusVisible: {
     outline: '2px solid',

@@ -7,7 +7,7 @@ const baseStyle = definePartsStyle({
   tab: {
     fontWeight: '600',
     fontSize: 'sm',
-    transition: 'all 0.12s ease-out',
+    transition: 'color 120ms ease-out, border-color 120ms ease-out, background-color 120ms ease-out',
     _focusVisible: {
       boxShadow: 'none',
       outline: '2px solid',

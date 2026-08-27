@@ -101,11 +101,6 @@ export const shadows = {
   tactile: '3px 3px 0px 0px #171A18',
   tactileLg: '4px 4px 0px 0px #171A18',
   inner: 'inset 0 1px 2px 0 rgba(23, 26, 24, 0.05)',
-  // Backwards-compatible aliases mapping to clean architectural borders
-  hardSm: 'none',
-  hard: '1px 1px 0px 0px #171A18',
-  hardLg: '3px 3px 0px 0px #171A18',
-  hardBrand: 'none',
 }
 
 export const space = {
