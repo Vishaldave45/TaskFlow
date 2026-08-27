@@ -20,7 +20,7 @@ import {
   Flex,
 } from '@chakra-ui/react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
-import { CheckSquare, Eye, EyeOff, UserPlus, ArrowLeft } from 'lucide-react'
+import { CheckSquare, Eye, EyeOff, UserPlus, ArrowLeft, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { ApiError } from '@/api/client'
 
@@ -92,10 +92,14 @@ export function RegisterPage() {
               <form onSubmit={handleSubmit}>
                 <Stack spacing={4}>
                   {error && (
-                    <Alert status="error" borderRadius="md" py={2.5}>
-                      <AlertIcon />
-                      <AlertDescription fontSize="sm">{error}</AlertDescription>
-                    </Alert>
+                    <Box bg="state.error.bg" border="1px solid" borderColor="state.error.border" p={3} borderRadius="md">
+                      <HStack spacing={2} align="start">
+                        <AlertCircle size={16} color="#DC2626" style={{ marginTop: '2px', flexShrink: 0 }} />
+                        <Text fontSize="sm" color="state.error.text" fontWeight="500">
+                          {error}
+                        </Text>
+                      </HStack>
+                    </Box>
                   )}
 
                   <FormControl isRequired>

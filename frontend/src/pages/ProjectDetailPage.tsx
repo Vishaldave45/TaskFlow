@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   Box,
   Button,
@@ -46,7 +46,6 @@ import {
   AlertDialogOverlay,
 } from '@chakra-ui/react'
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom'
-import { useRef } from 'react'
 import {
   ArrowLeft,
   Plus,
@@ -196,7 +195,6 @@ export function ProjectDetailPage() {
       setTasks((prev) => prev.map((t) => (t.id === task.id ? updated : t)))
       if (selectedTask && selectedTask.id === task.id) {
         setSelectedTask(updated)
-        // Refresh activity after status change
         activityApi.listByTask(task.id).then(setTaskActivity).catch(() => {})
       }
       toast({
@@ -262,7 +260,6 @@ export function ProjectDetailPage() {
       })
       setTaskComments((prev) => [...prev, comment])
       setNewComment('')
-      // Refresh activity log after commenting
       activityApi.listByTask(selectedTask.id).then(setTaskActivity).catch(() => {})
     } catch {
       toast({
@@ -363,16 +360,18 @@ export function ProjectDetailPage() {
   }
 
   // Filter tasks
-  const filteredTasks = tasks.filter((t) => {
-    const matchesSearch =
-      t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.description.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesPriority = priorityFilter === 'ALL' || t.priority === priorityFilter
-    const matchesAssignee =
-      assigneeFilter === 'ALL' ||
-      (assigneeFilter === 'UNASSIGNED' ? !t.assignee : t.assignee?.id === Number(assigneeFilter))
-    return matchesSearch && matchesPriority && matchesAssignee
-  })
+  const filteredTasks = Array.isArray(tasks)
+    ? tasks.filter((t) => {
+        const matchesSearch =
+          t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          t.description.toLowerCase().includes(searchQuery.toLowerCase())
+        const matchesPriority = priorityFilter === 'ALL' || t.priority === priorityFilter
+        const matchesAssignee =
+          assigneeFilter === 'ALL' ||
+          (assigneeFilter === 'UNASSIGNED' ? !t.assignee : t.assignee?.id === Number(assigneeFilter))
+        return matchesSearch && matchesPriority && matchesAssignee
+      })
+    : []
 
   const columns: { status: TaskStatus; label: string; badge: 'neutral' | 'brand' | 'success' }[] = [
     { status: 'TODO', label: 'To Do', badge: 'neutral' },

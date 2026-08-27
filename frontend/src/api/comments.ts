@@ -1,11 +1,16 @@
 import { apiClient } from './client'
-import type { Comment, CommentCreatePayload } from '@/types'
+import type { Comment, CommentCreatePayload, PaginatedResponse } from '@/types'
 
 export const commentsApi = {
   listByTask: async (taskId: number): Promise<Comment[]> => {
-    return apiClient<Comment[]>(`/tasks/${taskId}/comments/`, {
+    const data = await apiClient<Comment[] | PaginatedResponse<Comment>>(`/tasks/${taskId}/comments/`, {
       method: 'GET',
     })
+    if (Array.isArray(data)) return data
+    if (data && Array.isArray((data as PaginatedResponse<Comment>).results)) {
+      return (data as PaginatedResponse<Comment>).results
+    }
+    return []
   },
 
   create: async (taskId: number, payload: CommentCreatePayload): Promise<Comment> => {
