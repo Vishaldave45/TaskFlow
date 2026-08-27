@@ -170,6 +170,23 @@ async function parseErrorBody(res: Response): Promise<{ message: string; errors?
     if (typeof data === 'string') return { message: data }
     if (data.detail) return { message: data.detail }
     if (data.message) return { message: data.message }
+
+    // If DRF returned field-level errors (e.g. { "email": ["..."], "password": ["..."] })
+    if (typeof data === 'object' && data !== null) {
+      const messages: string[] = []
+      for (const [key, val] of Object.entries(data)) {
+        const fieldName = key.charAt(0).toUpperCase() + key.slice(1).replace('_', ' ')
+        if (Array.isArray(val)) {
+          messages.push(`${fieldName}: ${val.join(' ')}`)
+        } else if (typeof val === 'string') {
+          messages.push(`${fieldName}: ${val}`)
+        }
+      }
+      if (messages.length > 0) {
+        return { message: messages.join(' | '), errors: data }
+      }
+    }
+
     return { message: 'An API error occurred.', errors: data }
   } catch {
     return { message: res.statusText || 'Network request failed.' }

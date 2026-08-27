@@ -51,14 +51,7 @@ export function RegisterPage() {
       navigate('/projects', { replace: true })
     } catch (err: unknown) {
       if (err instanceof ApiError) {
-        if (err.errors) {
-          const firstKey = Object.keys(err.errors)[0]
-          const val = err.errors[firstKey]
-          const message = Array.isArray(val) ? val[0] : val
-          setError(`${firstKey}: ${message}`)
-        } else {
-          setError(err.message || 'Registration failed.')
-        }
+        setError(err.message || 'Registration failed.')
       } else {
         setError('An unexpected error occurred. Please try again.')
       }
