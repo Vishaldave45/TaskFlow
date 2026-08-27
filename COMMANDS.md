@@ -31,7 +31,7 @@ uv run python manage.py migrate
 uv run python manage.py runserver
 ```
 
-#### Terminal 2 — Frontend (Port 5173)
+#### Terminal 2 — Frontend (Port 3000)
 ```bash
 # Navigate to frontend and start Vite dev server
 cd frontend
@@ -39,7 +39,7 @@ npm install
 npm run dev
 ```
 
-> 💡 **Vite Proxy Note**: The frontend dev server (`http://localhost:5173`) automatically proxies all requests starting with `/api` to the Django backend (`http://127.0.0.1:8000`).
+> 💡 **Vite Proxy Note**: The frontend dev server (`http://localhost:3000`) automatically proxies all requests starting with `/api` to the Django backend (`http://127.0.0.1:8000`).
 
 ---
 
@@ -322,7 +322,7 @@ docker exec -it taskflow_postgres psql -U taskflow -d taskflow -c "ALTER USER ta
 
 | Service / Tool | URL | Description |
 | :--- | :--- | :--- |
-| **Frontend Web App** | `http://localhost:5173/` | React + Chakra UI TaskFlow Application |
+| **Frontend Web App** | `http://localhost:3000/` | React + Chakra UI TaskFlow Application |
 | **API Base URL** | `http://localhost:8000/api/v1/` | Base URL for all API v1 endpoints |
 | **Swagger UI** | `http://localhost:8000/api/docs/` | Interactive OpenAPI / Swagger API playground |
 | **Redoc UI** | `http://localhost:8000/api/redoc/` | Clean, structured API documentation |
@@ -336,8 +336,8 @@ docker exec -it taskflow_postgres psql -U taskflow -d taskflow -c "ALTER USER ta
 ### Port Conflicts & Process Management
 
 ```bash
-# Check what processes are running on frontend (5173), backend (8000), or DB (5432)
-lsof -i :5173
+# Check what processes are running on frontend (3000), backend (8000), or DB (5432)
+lsof -i :3000
 lsof -i :8000
 lsof -i :5432
 
