@@ -1,6 +1,0 @@
-{
-  "name": "TaskFlow",
-  "description": "Collaborative digital workroom with workspaces, Kanban task tracking, comments, and activity logging.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
