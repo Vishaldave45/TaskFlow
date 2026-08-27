@@ -2,8 +2,6 @@ import { useState } from 'react'
 import {
   Box,
   Button,
-  Card,
-  CardBody,
   Container,
   FormControl,
   FormLabel,
@@ -15,9 +13,11 @@ import {
   Text,
   HStack,
   Flex,
+  Divider,
+  SimpleGrid,
 } from '@chakra-ui/react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
-import { CheckSquare, Eye, EyeOff, UserPlus, ArrowLeft, AlertCircle } from 'lucide-react'
+import { Eye, EyeOff, ArrowRight, AlertCircle, Terminal, ArrowUpRight } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { ApiError } from '@/api/client'
 
@@ -58,94 +58,173 @@ export function RegisterPage() {
   }
 
   return (
-    <Box minH="100vh" bg="canvas" py={{ base: 12, md: 24 }} display="flex" alignItems="center">
-      <Container maxW="md">
-        <Stack spacing={8}>
-          {/* Header */}
-          <Stack spacing={2} textAlign="center" align="center">
-            <Flex
-              w="48px"
-              h="48px"
-              bg="brand.primary"
-              color="white"
-              borderRadius="lg"
-              align="center"
-              justify="center"
-              boxShadow="hardBrand"
-            >
-              <CheckSquare size={26} />
-            </Flex>
-            <Heading as="h1" size="xl" fontWeight="700" color="ink.primary" letterSpacing="tight">
-              Create account
-            </Heading>
-            <Text fontSize="sm" color="ink.secondary">
-              Get started with TaskFlow in seconds
-            </Text>
-          </Stack>
+    <Box minH="100vh" bg="canvas" display="flex" alignItems="center" py={{ base: 6, md: 12 }}>
+      <Container maxW="container.lg">
+        <SimpleGrid
+          columns={{ base: 1, md: 12 }}
+          bg="surface.base"
+          border="1px solid"
+          borderColor="border.dark"
+          borderRadius="lg"
+          boxShadow="tactile"
+          overflow="hidden"
+          minH="560px"
+        >
+          {/* Left Panel: Editorial Manifesto */}
+          <Flex
+            gridColumn={{ base: 'span 1', md: 'span 5' }}
+            bg="brand.primary"
+            color="ink.inverse"
+            p={{ base: 6, md: 10 }}
+            direction="column"
+            justify="space-between"
+            borderRight={{ base: 'none', md: '1px solid' }}
+            borderBottom={{ base: '1px solid', md: 'none' }}
+            borderColor="border.dark"
+          >
+            <Stack spacing={8}>
+              <HStack spacing={2.5}>
+                <Flex
+                  w="26px"
+                  h="26px"
+                  bg="surface.base"
+                  color="brand.primary"
+                  borderRadius="xs"
+                  align="center"
+                  justify="center"
+                >
+                  <Terminal size={14} />
+                </Flex>
+                <Text fontFamily="mono" fontSize="xs" fontWeight="700" letterSpacing="widest">
+                  TASKFLOW // INITIALIZE
+                </Text>
+              </HStack>
 
-          {/* Form Card */}
-          <Card p={2}>
-            <CardBody>
+              <Stack spacing={4}>
+                <Heading
+                  as="h2"
+                  fontSize={{ base: '2xl', md: '3xl' }}
+                  fontWeight="700"
+                  lineHeight="shorter"
+                  letterSpacing="tight"
+                  color="ink.inverse"
+                >
+                  Built for builders who value execution over friction.
+                </Heading>
+
+                <Text fontSize="xs" color="brand.subtle" lineHeight="base">
+                  Instant project governance, automated audit tracking, and high-density sprint workflows.
+                </Text>
+              </Stack>
+            </Stack>
+
+            <Box pt={8}>
+              <Divider borderColor="rgba(250, 249, 245, 0.2)" mb={4} />
+              <HStack justify="space-between" fontSize="3xs" fontFamily="mono" color="brand.subtle" letterSpacing="wider">
+                <Text>OPEN STANDARDS</Text>
+                <Text>REST + RBAC ENGINE</Text>
+              </HStack>
+            </Box>
+          </Flex>
+
+          {/* Right Panel: Tactile Registration Form */}
+          <Flex
+            gridColumn={{ base: 'span 1', md: 'span 7' }}
+            p={{ base: 6, md: 10 }}
+            direction="column"
+            justify="center"
+            bg="surface.base"
+          >
+            <Stack spacing={6} maxW="400px" mx="auto" w="full">
+              <Stack spacing={1}>
+                <Text fontFamily="mono" fontSize="2xs" fontWeight="700" color="ink.muted" textTransform="uppercase" letterSpacing="widest">
+                  Account Registration
+                </Text>
+                <Heading as="h1" size="lg" fontWeight="700" color="ink.primary">
+                  Create new account
+                </Heading>
+              </Stack>
+
+              {error && (
+                <Box bg="state.error.bg" border="1px solid" borderColor="state.error.border" p={3} borderRadius="sm">
+                  <HStack spacing={2} align="start">
+                    <AlertCircle size={15} color="#991B1B" style={{ marginTop: '2px', flexShrink: 0 }} />
+                    <Text fontSize="xs" color="state.error.text" fontWeight="500">
+                      {error}
+                    </Text>
+                  </HStack>
+                </Box>
+              )}
+
               <form onSubmit={handleSubmit}>
-                <Stack spacing={4}>
-                  {error && (
-                    <Box bg="state.error.bg" border="1px solid" borderColor="state.error.border" p={3} borderRadius="md">
-                      <HStack spacing={2} align="start">
-                        <AlertCircle size={16} color="#DC2626" style={{ marginTop: '2px', flexShrink: 0 }} />
-                        <Text fontSize="sm" color="state.error.text" fontWeight="500">
-                          {error}
-                        </Text>
-                      </HStack>
-                    </Box>
-                  )}
-
+                <Stack spacing={3.5}>
                   <FormControl isRequired>
-                    <FormLabel fontSize="xs" fontWeight="600" color="ink.secondary" textTransform="uppercase" letterSpacing="wider">
+                    <FormLabel
+                      fontSize="2xs"
+                      fontFamily="mono"
+                      fontWeight="700"
+                      color="ink.secondary"
+                      textTransform="uppercase"
+                      letterSpacing="wider"
+                    >
                       Username
                     </FormLabel>
                     <Input
-                      placeholder="johndoe"
+                      type="text"
+                      placeholder="e.g. alex_rivera"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      autoComplete="username"
                       autoFocus
                     />
                   </FormControl>
 
                   <FormControl isRequired>
-                    <FormLabel fontSize="xs" fontWeight="600" color="ink.secondary" textTransform="uppercase" letterSpacing="wider">
+                    <FormLabel
+                      fontSize="2xs"
+                      fontFamily="mono"
+                      fontWeight="700"
+                      color="ink.secondary"
+                      textTransform="uppercase"
+                      letterSpacing="wider"
+                    >
                       Email Address
                     </FormLabel>
                     <Input
                       type="email"
-                      placeholder="name@company.com"
+                      placeholder="alex@company.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      autoComplete="email"
                     />
                   </FormControl>
 
                   <FormControl isRequired>
-                    <FormLabel fontSize="xs" fontWeight="600" color="ink.secondary" textTransform="uppercase" letterSpacing="wider">
+                    <FormLabel
+                      fontSize="2xs"
+                      fontFamily="mono"
+                      fontWeight="700"
+                      color="ink.secondary"
+                      textTransform="uppercase"
+                      letterSpacing="wider"
+                    >
                       Password
                     </FormLabel>
-                    <InputGroup>
+                    <InputGroup size="md">
                       <Input
                         type={showPassword ? 'text' : 'password'}
                         placeholder="At least 8 characters"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        autoComplete="new-password"
                       />
-                      <InputRightElement>
+                      <InputRightElement width="3rem">
                         <Button
+                          h="1.75rem"
+                          size="xs"
                           variant="ghost"
-                          size="sm"
                           onClick={() => setShowPassword(!showPassword)}
                           aria-label={showPassword ? 'Hide password' : 'Show password'}
-                          p={1}
+                          p={0}
                         >
-                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                          {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                         </Button>
                       </InputRightElement>
                     </InputGroup>
@@ -154,37 +233,37 @@ export function RegisterPage() {
                   <Button
                     type="submit"
                     variant="solid"
-                    size="lg"
+                    size="md"
                     w="full"
-                    mt={2}
+                    mt={3}
                     isLoading={loading}
-                    loadingText="Creating account..."
-                    leftIcon={<UserPlus size={18} />}
+                    loadingText="Registering..."
+                    rightIcon={<ArrowRight size={15} />}
                   >
-                    Register & Continue
+                    Create Account
                   </Button>
                 </Stack>
               </form>
-            </CardBody>
-          </Card>
 
-          {/* Footer */}
-          <HStack justify="center" spacing={1} fontSize="sm">
-            <Text color="ink.secondary">Already have an account?</Text>
-            <Button
-              as={RouterLink}
-              to="/login"
-              variant="ghost"
-              size="sm"
-              color="brand.primary"
-              fontWeight="600"
-              leftIcon={<ArrowLeft size={14} />}
-              p={1}
-            >
-              Sign In
-            </Button>
-          </HStack>
-        </Stack>
+              <Divider borderColor="border.default" />
+
+              <HStack justify="space-between" fontSize="xs">
+                <Text color="ink.secondary">Already have an account?</Text>
+                <Button
+                  as={RouterLink}
+                  to="/login"
+                  variant="ghost"
+                  size="xs"
+                  fontWeight="600"
+                  color="brand.primary"
+                  rightIcon={<ArrowUpRight size={13} />}
+                >
+                  Sign In
+                </Button>
+              </HStack>
+            </Stack>
+          </Flex>
+        </SimpleGrid>
       </Container>
     </Box>
   )
