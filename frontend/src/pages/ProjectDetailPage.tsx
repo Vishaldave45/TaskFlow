@@ -44,6 +44,13 @@ import {
   AlertDialogHeader,
   AlertDialogContent,
   AlertDialogOverlay,
+  Progress,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  Tooltip,
+  Tag,
 } from '@chakra-ui/react'
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom'
 import {
@@ -60,7 +67,13 @@ import {
   FileText,
   CheckCircle,
   AlertCircle,
+  MoreVertical,
+  CheckCircle2,
+  Crown,
+  Shield,
+  UserCheck,
 } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
 import { projectsApi } from '@/api/projects'
 import { tasksApi } from '@/api/tasks'
 import { commentsApi } from '@/api/comments'
@@ -79,11 +92,16 @@ export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
   const projectId = Number(id)
   const navigate = useNavigate()
+  const { user: currentUser } = useAuth()
 
   const [project, setProject] = useState<Project | null>(null)
   const [tasks, setTasks] = useState<Task[]>([])
   const [members, setMembers] = useState<ProjectMember[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Role Checks
+  const isOwner = currentUser?.id === project?.owner?.id
+  const isMember = isOwner || members.some((m) => m.user.id === currentUser?.id)
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('')
@@ -108,8 +126,16 @@ export function ProjectDetailPage() {
   const [taskDueDate, setTaskDueDate] = useState('')
   const [savingTask, setSavingTask] = useState(false)
 
-  // Selected Task Detail
+  // Selected Task Detail & Edit
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const [editPriority, setEditPriority] = useState<TaskPriority>('MEDIUM')
+  const [editAssignee, setEditAssignee] = useState<string>('')
+  const [editDueDate, setEditDueDate] = useState('')
+  const [isEditingTask, setIsEditingTask] = useState(false)
+  const [savingEdit, setSavingEdit] = useState(false)
+
   const [taskComments, setTaskComments] = useState<Comment[]>([])
   const [taskActivity, setTaskActivity] = useState<ActivityLog[]>([])
   const [newComment, setNewComment] = useState('')
@@ -132,8 +158,8 @@ export function ProjectDetailPage() {
         projectsApi.listMembers(projectId).catch(() => []),
       ])
       setProject(projectData)
-      setTasks(tasksData)
-      setMembers(membersData)
+      setTasks(Array.isArray(tasksData) ? tasksData : [])
+      setMembers(Array.isArray(membersData) ? membersData : [])
     } catch {
       toast({
         title: 'Error loading project',
@@ -198,7 +224,7 @@ export function ProjectDetailPage() {
         activityApi.listByTask(task.id).then(setTaskActivity).catch(() => {})
       }
       toast({
-        title: `Task moved to ${newStatus.replace('_', ' ')}`,
+        title: `Moved to ${newStatus.replace('_', ' ')}`,
         status: 'info',
         duration: 2000,
       })
@@ -213,7 +239,14 @@ export function ProjectDetailPage() {
 
   const openTaskDetailModal = async (task: Task) => {
     setSelectedTask(task)
+    setEditTitle(task.title)
+    setEditDesc(task.description || '')
+    setEditPriority(task.priority)
+    setEditAssignee(task.assignee ? String(task.assignee.id) : '')
+    setEditDueDate(task.due_date || '')
+    setIsEditingTask(false)
     onOpenTaskDetail()
+
     try {
       const [comments, activity] = await Promise.all([
         commentsApi.listByTask(task.id).catch(() => []),
@@ -223,6 +256,38 @@ export function ProjectDetailPage() {
       setTaskActivity(activity)
     } catch {
       // Non-blocking
+    }
+  }
+
+  const handleSaveTaskEdits = async () => {
+    if (!selectedTask || !editTitle.trim()) return
+
+    setSavingEdit(true)
+    try {
+      const updated = await tasksApi.update(selectedTask.id, {
+        title: editTitle.trim(),
+        description: editDesc.trim(),
+        priority: editPriority,
+        assignee_id: editAssignee ? Number(editAssignee) : null,
+        due_date: editDueDate || null,
+      })
+      setSelectedTask(updated)
+      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+      setIsEditingTask(false)
+      toast({
+        title: 'Task updated',
+        status: 'success',
+        duration: 2500,
+      })
+      activityApi.listByTask(selectedTask.id).then(setTaskActivity).catch(() => {})
+    } catch {
+      toast({
+        title: 'Update failed',
+        status: 'error',
+        duration: 3000,
+      })
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -310,7 +375,7 @@ export function ProjectDetailPage() {
     } catch {
       toast({
         title: 'Failed to add member',
-        description: 'Make sure a user with this email address exists in the system.',
+        description: 'Verify a user with this email exists.',
         status: 'error',
         duration: 4000,
       })
@@ -368,10 +433,18 @@ export function ProjectDetailPage() {
         const matchesPriority = priorityFilter === 'ALL' || t.priority === priorityFilter
         const matchesAssignee =
           assigneeFilter === 'ALL' ||
-          (assigneeFilter === 'UNASSIGNED' ? !t.assignee : t.assignee?.id === Number(assigneeFilter))
+          (assigneeFilter === 'MY_TASKS'
+            ? t.assignee?.id === currentUser?.id
+            : assigneeFilter === 'UNASSIGNED'
+            ? !t.assignee
+            : t.assignee?.id === Number(assigneeFilter))
         return matchesSearch && matchesPriority && matchesAssignee
       })
     : []
+
+  const totalTasks = tasks.length
+  const completedTasks = tasks.filter((t) => t.status === 'DONE').length
+  const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
   const columns: { status: TaskStatus; label: string; badge: 'neutral' | 'brand' | 'success' }[] = [
     { status: 'TODO', label: 'To Do', badge: 'neutral' },
@@ -384,11 +457,11 @@ export function ProjectDetailPage() {
       <Container maxW="container.xl" py={8}>
         <Stack spacing={6}>
           <Skeleton h="32px" w="200px" />
-          <Skeleton h="120px" />
+          <Skeleton h="140px" />
           <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
-            <Skeleton h="400px" />
-            <Skeleton h="400px" />
-            <Skeleton h="400px" />
+            <Skeleton h="450px" />
+            <Skeleton h="450px" />
+            <Skeleton h="450px" />
           </SimpleGrid>
         </Stack>
       </Container>
@@ -398,60 +471,96 @@ export function ProjectDetailPage() {
   return (
     <Box py={8}>
       <Container maxW="container.xl">
-        {/* Back Link */}
-        <Button
-          as={RouterLink}
-          to="/projects"
-          variant="ghost"
-          size="sm"
-          leftIcon={<ArrowLeft size={16} />}
-          mb={4}
-        >
-          All Projects
-        </Button>
+        {/* Back Link & Role Indicator */}
+        <Flex justify="space-between" align="center" mb={4}>
+          <Button
+            as={RouterLink}
+            to="/projects"
+            variant="ghost"
+            size="sm"
+            leftIcon={<ArrowLeft size={16} />}
+          >
+            All Projects
+          </Button>
 
-        {/* Project Header Card */}
+          <HStack spacing={2}>
+            {isOwner ? (
+              <Badge variant="brand" display="flex" alignItems="center" gap={1} px={2.5} py={1}>
+                <Crown size={12} /> YOUR ROLE: OWNER (FULL ACCESS)
+              </Badge>
+            ) : isMember ? (
+              <Badge variant="neutral" display="flex" alignItems="center" gap={1} px={2.5} py={1}>
+                <Shield size={12} /> YOUR ROLE: COLLABORATOR
+              </Badge>
+            ) : null}
+          </HStack>
+        </Flex>
+
+        {/* Project Header Card with Velocity & Progress Bar */}
         <Card mb={6} p={6}>
-          <Flex justify="space-between" align={{ base: 'start', md: 'center' }} direction={{ base: 'column', md: 'row' }} gap={4}>
-            <Stack spacing={2}>
-              <HStack spacing={2}>
-                <Heading as="h1" size="xl" fontWeight="700" color="ink.primary">
-                  {project?.name}
-                </Heading>
-                <Badge variant="brand">PROJECT #{project?.id}</Badge>
-              </HStack>
-              <Text fontSize="sm" color="ink.secondary" maxW="2xl">
-                {project?.description || 'No description provided for this project.'}
-              </Text>
-            </Stack>
+          <Stack spacing={5}>
+            <Flex justify="space-between" align={{ base: 'start', md: 'center' }} direction={{ base: 'column', md: 'row' }} gap={4}>
+              <Stack spacing={1.5}>
+                <HStack spacing={2.5}>
+                  <Heading as="h1" size="xl" fontWeight="700" color="ink.primary">
+                    {project?.name}
+                  </Heading>
+                  <Badge variant="brand" fontSize="xs">
+                    PROJECT #{project?.id}
+                  </Badge>
+                </HStack>
+                <Text fontSize="sm" color="ink.secondary" maxW="2xl">
+                  {project?.description || 'No description provided for this project.'}
+                </Text>
+              </Stack>
 
-            <HStack spacing={3} wrap="wrap">
-              <Button
-                variant="outline"
-                size="sm"
-                leftIcon={<Users size={16} />}
-                onClick={onOpenMemberModal}
-              >
-                Members ({members.length})
-              </Button>
-              <Button
-                variant="solid"
-                size="sm"
-                leftIcon={<Plus size={16} />}
-                onClick={onOpenTaskModal}
-              >
-                New Task
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                leftIcon={<Trash2 size={16} />}
-                onClick={onOpenDeleteAlert}
-              >
-                Delete
-              </Button>
-            </HStack>
-          </Flex>
+              <HStack spacing={3} wrap="wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Users size={16} />}
+                  onClick={onOpenMemberModal}
+                >
+                  Collaborators ({members.length + 1})
+                </Button>
+
+                <Button
+                  variant="solid"
+                  size="sm"
+                  leftIcon={<Plus size={16} />}
+                  onClick={onOpenTaskModal}
+                >
+                  New Task
+                </Button>
+
+                {/* Only Project Owner can delete the project */}
+                {isOwner && (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    leftIcon={<Trash2 size={16} />}
+                    onClick={onOpenDeleteAlert}
+                  >
+                    Delete Project
+                  </Button>
+                )}
+              </HStack>
+            </Flex>
+
+            {/* Progress Metrics Bar */}
+            <Box bg="surface.subtle" p={4} borderRadius="md" border="1px solid" borderColor="border.subtle">
+              <Flex justify="space-between" align="center" mb={2}>
+                <HStack spacing={2} fontSize="xs" fontWeight="600" color="ink.secondary">
+                  <CheckCircle2 size={14} color="#2563EB" />
+                  <Text>SPRINT COMPLETION</Text>
+                </HStack>
+                <Text fontSize="xs" fontFamily="mono" fontWeight="600" color="ink.primary">
+                  {completedTasks} of {totalTasks} tasks completed ({progressPercent}%)
+                </Text>
+              </Flex>
+              <Progress value={progressPercent} size="xs" colorScheme="blue" borderRadius="full" />
+            </Box>
+          </Stack>
         </Card>
 
         {/* Search & Filter Controls */}
@@ -462,7 +571,7 @@ export function ProjectDetailPage() {
                 <Search size={16} color="#94A3B8" />
               </InputLeftElement>
               <Input
-                placeholder="Search tasks by keyword..."
+                placeholder="Filter tasks by summary or keywords..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -476,19 +585,25 @@ export function ProjectDetailPage() {
                 onChange={(e) => setPriorityFilter(e.target.value)}
               >
                 <option value="ALL">All Priorities</option>
-                <option value="HIGH">High</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="LOW">Low</option>
+                <option value="HIGH">High Priority</option>
+                <option value="MEDIUM">Medium Priority</option>
+                <option value="LOW">Low Priority</option>
               </Select>
 
               <Select
                 size="sm"
-                w={{ base: 'full', md: '160px' }}
+                w={{ base: 'full', md: '170px' }}
                 value={assigneeFilter}
                 onChange={(e) => setAssigneeFilter(e.target.value)}
               >
                 <option value="ALL">All Assignees</option>
+                <option value="MY_TASKS">⚡ Assigned to Me</option>
                 <option value="UNASSIGNED">Unassigned</option>
+                {project?.owner && (
+                  <option value={project.owner.id}>
+                    {project.owner.username} (Owner)
+                  </option>
+                )}
                 {members.map((m) => (
                   <option key={m.user.id} value={m.user.id}>
                     {m.user.username}
@@ -506,7 +621,7 @@ export function ProjectDetailPage() {
               Kanban Board ({filteredTasks.length})
             </Tab>
             <Tab fontWeight="600" fontSize="sm">
-              Team Members ({members.length})
+              Team Members ({members.length + 1})
             </Tab>
           </TabList>
 
@@ -524,7 +639,7 @@ export function ProjectDetailPage() {
                       borderRadius="lg"
                       border="1px solid"
                       borderColor="border.default"
-                      minH="500px"
+                      minH="520px"
                     >
                       <Flex justify="space-between" align="center" mb={4}>
                         <HStack spacing={2}>
@@ -538,71 +653,143 @@ export function ProjectDetailPage() {
                       </Flex>
 
                       <Stack spacing={3}>
-                        {columnTasks.map((task) => (
-                          <Card
-                            key={task.id}
-                            cursor="pointer"
-                            onClick={() => openTaskDetailModal(task)}
-                            _hover={{
-                              borderColor: 'border.strong',
-                              boxShadow: 'hard',
-                              transform: 'translateY(-1px)',
-                            }}
-                            transition="all 0.15s ease-in-out"
-                          >
-                            <CardBody p={4}>
-                              <Stack spacing={2.5}>
-                                <Flex justify="space-between" align="start">
-                                  <Text fontWeight="600" fontSize="sm" color="ink.primary">
-                                    {task.title}
-                                  </Text>
-                                  <Badge
-                                    variant={
-                                      task.priority === 'HIGH'
-                                        ? 'error'
-                                        : task.priority === 'MEDIUM'
-                                        ? 'warning'
-                                        : 'neutral'
-                                    }
-                                    fontSize="2xs"
-                                  >
-                                    {task.priority}
-                                  </Badge>
-                                </Flex>
+                        {columnTasks.map((task) => {
+                          const isAssignedToMe = task.assignee?.id === currentUser?.id
+                          const isCreatedByMe = task.creator?.id === currentUser?.id
+                          const isOverdue =
+                            task.due_date &&
+                            task.status !== 'DONE' &&
+                            new Date(task.due_date) < new Date(new Date().setHours(0, 0, 0, 0))
 
-                                {task.description && (
-                                  <Text fontSize="xs" color="ink.secondary" noOfLines={2}>
-                                    {task.description}
-                                  </Text>
-                                )}
+                          return (
+                            <Card
+                              key={task.id}
+                              _hover={{
+                                borderColor: 'border.strong',
+                                boxShadow: 'hard',
+                                transform: 'translateY(-1px)',
+                              }}
+                              transition="all 0.15s ease-in-out"
+                              position="relative"
+                              overflow="hidden"
+                            >
+                              {/* Left Priority Indicator Rail */}
+                              <Box
+                                position="absolute"
+                                top={0}
+                                left={0}
+                                bottom={0}
+                                w="4px"
+                                bg={
+                                  task.priority === 'HIGH'
+                                    ? 'priority.high'
+                                    : task.priority === 'MEDIUM'
+                                    ? 'priority.medium'
+                                    : 'border.default'
+                                }
+                              />
 
-                                <Divider borderColor="border.subtle" />
+                              <CardBody p={4} pl={5}>
+                                <Stack spacing={2.5}>
+                                  <Flex justify="space-between" align="start" gap={2}>
+                                    <Text
+                                      fontWeight="600"
+                                      fontSize="sm"
+                                      color="ink.primary"
+                                      cursor="pointer"
+                                      onClick={() => openTaskDetailModal(task)}
+                                      _hover={{ color: 'brand.primary' }}
+                                    >
+                                      {task.title}
+                                    </Text>
 
-                                <Flex justify="space-between" align="center" fontSize="2xs" color="ink.muted">
-                                  <HStack spacing={1}>
-                                    <Text fontFamily="mono">#{task.id}</Text>
-                                    {task.assignee && (
-                                      <Badge variant="neutral" fontSize="3xs" px={1}>
-                                        @{task.assignee.username}
-                                      </Badge>
+                                    {/* Card Quick Actions Menu */}
+                                    <Menu placement="bottom-end">
+                                      <MenuButton
+                                        as={IconButton}
+                                        aria-label="Actions"
+                                        icon={<MoreVertical size={14} />}
+                                        size="xs"
+                                        variant="ghost"
+                                        color="ink.muted"
+                                      />
+                                      <MenuList minW="140px" p={1} fontSize="xs" boxShadow="hardLg">
+                                        <MenuItem
+                                          isDisabled={task.status === 'TODO'}
+                                          onClick={() => handleStatusChange(task, 'TODO')}
+                                        >
+                                          Move to To Do
+                                        </MenuItem>
+                                        <MenuItem
+                                          isDisabled={task.status === 'IN_PROGRESS'}
+                                          onClick={() => handleStatusChange(task, 'IN_PROGRESS')}
+                                        >
+                                          Move to In Progress
+                                        </MenuItem>
+                                        <MenuItem
+                                          isDisabled={task.status === 'DONE'}
+                                          onClick={() => handleStatusChange(task, 'DONE')}
+                                        >
+                                          Mark as Done
+                                        </MenuItem>
+                                      </MenuList>
+                                    </Menu>
+                                  </Flex>
+
+                                  {task.description && (
+                                    <Text
+                                      fontSize="xs"
+                                      color="ink.secondary"
+                                      noOfLines={2}
+                                      cursor="pointer"
+                                      onClick={() => openTaskDetailModal(task)}
+                                    >
+                                      {task.description}
+                                    </Text>
+                                  )}
+
+                                  {/* Role Tags on Task Card */}
+                                  <HStack spacing={1.5} wrap="wrap">
+                                    {isAssignedToMe && (
+                                      <Tag size="sm" variant="subtle" colorScheme="blue" fontSize="3xs" py={0.5}>
+                                        <UserCheck size={10} style={{ marginRight: 3 }} /> ASSIGNED TO YOU
+                                      </Tag>
+                                    )}
+                                    {isCreatedByMe && (
+                                      <Tag size="sm" variant="subtle" colorScheme="gray" fontSize="3xs" py={0.5}>
+                                        CREATOR
+                                      </Tag>
                                     )}
                                   </HStack>
 
-                                  <HStack spacing={1}>
-                                    <Clock size={12} />
-                                    <Text>
-                                      {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No date'}
-                                    </Text>
-                                  </HStack>
-                                </Flex>
-                              </Stack>
-                            </CardBody>
-                          </Card>
-                        ))}
+                                  <Divider borderColor="border.subtle" />
+
+                                  <Flex justify="space-between" align="center" fontSize="2xs" color="ink.muted">
+                                    <HStack spacing={1.5}>
+                                      <Text fontFamily="mono" color="ink.muted">#{task.id}</Text>
+                                      {task.assignee && (
+                                        <Tooltip label={`Assigned to ${task.assignee.username}`} placement="top">
+                                          <Avatar size="2xs" name={task.assignee.username} bg="brand.primary" />
+                                        </Tooltip>
+                                      )}
+                                    </HStack>
+
+                                    <HStack spacing={1}>
+                                      <Clock size={12} color={isOverdue ? '#DC2626' : undefined} />
+                                      <Text color={isOverdue ? 'state.error.text' : undefined} fontWeight={isOverdue ? '600' : 'normal'}>
+                                        {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No date'}
+                                      </Text>
+                                    </HStack>
+                                  </Flex>
+                                </Stack>
+                              </CardBody>
+                            </Card>
+                          )
+                        })}
 
                         {columnTasks.length === 0 && (
                           <Flex
-                            h="120px"
+                            h="140px"
                             align="center"
                             justify="center"
                             border="1px dashed"
@@ -621,7 +808,7 @@ export function ProjectDetailPage() {
               </SimpleGrid>
             </TabPanel>
 
-            {/* Panel 2: Members */}
+            {/* Panel 2: Members & Role Management */}
             <TabPanel p={0}>
               <Card p={6}>
                 <CardHeader px={0} pt={0}>
@@ -631,65 +818,113 @@ export function ProjectDetailPage() {
                         Project Collaborators
                       </Heading>
                       <Text fontSize="sm" color="ink.secondary">
-                        Team members who have access to collaborate on project tasks.
+                        {isOwner
+                          ? 'You have full ownership permissions to manage team members and invites.'
+                          : 'You have collaborator permissions to view team members and work on tasks.'}
                       </Text>
                     </Stack>
-                    <Button
-                      variant="solid"
-                      size="sm"
-                      leftIcon={<UserPlus size={16} />}
-                      onClick={onOpenMemberModal}
-                    >
-                      Invite Member
-                    </Button>
+
+                    {/* Only Project Owner can invite members */}
+                    {isOwner && (
+                      <Button
+                        variant="solid"
+                        size="sm"
+                        leftIcon={<UserPlus size={16} />}
+                        onClick={onOpenMemberModal}
+                      >
+                        Invite Member
+                      </Button>
+                    )}
                   </Flex>
                 </CardHeader>
                 <CardBody px={0} pb={0}>
                   <Stack spacing={3}>
-                    {members.map((member) => (
+                    {/* Owner Row */}
+                    {project?.owner && (
                       <Flex
-                        key={member.id}
                         justify="space-between"
                         align="center"
                         p={3.5}
                         borderRadius="md"
                         bg="surface.subtle"
                         border="1px solid"
-                        borderColor="border.default"
+                        borderColor="brand.subtle"
                       >
                         <HStack spacing={3}>
-                          <Avatar size="sm" name={member.user.username} bg="brand.primary" color="white" />
+                          <Avatar size="sm" name={project.owner.username} bg="brand.primary" color="white" />
                           <Box>
-                            <Text fontSize="sm" fontWeight="600" color="ink.primary">
-                              {member.user.username}
-                            </Text>
+                            <HStack spacing={1.5}>
+                              <Text fontSize="sm" fontWeight="600" color="ink.primary">
+                                {project.owner.username}
+                              </Text>
+                              <Crown size={14} color="#2563EB" />
+                              {project.owner.id === currentUser?.id && (
+                                <Badge variant="neutral" fontSize="3xs">YOU</Badge>
+                              )}
+                            </HStack>
                             <Text fontSize="xs" color="ink.secondary">
-                              {member.user.email}
+                              {project.owner.email}
                             </Text>
                           </Box>
                         </HStack>
 
-                        <HStack spacing={3}>
-                          <Badge variant="brand" fontSize="2xs">
-                            COLLABORATOR
-                          </Badge>
-                          <IconButton
-                            aria-label="Remove collaborator"
-                            icon={<Trash2 size={14} />}
-                            variant="ghost"
-                            size="xs"
-                            color="state.error.text"
-                            onClick={() => handleRemoveMember(member.user.id)}
-                          />
-                        </HStack>
+                        <Badge variant="brand" fontSize="2xs">
+                          PROJECT OWNER
+                        </Badge>
                       </Flex>
-                    ))}
-
-                    {members.length === 0 && (
-                      <Text fontSize="sm" color="ink.muted" textAlign="center" py={4}>
-                        No collaborators added yet. Invite team members using their email.
-                      </Text>
                     )}
+
+                    {/* Member Rows */}
+                    {members.map((member) => {
+                      const isMe = member.user.id === currentUser?.id
+                      return (
+                        <Flex
+                          key={member.id}
+                          justify="space-between"
+                          align="center"
+                          p={3.5}
+                          borderRadius="md"
+                          bg="surface.subtle"
+                          border="1px solid"
+                          borderColor="border.default"
+                        >
+                          <HStack spacing={3}>
+                            <Avatar size="sm" name={member.user.username} bg="slate.500" color="white" />
+                            <Box>
+                              <HStack spacing={1.5}>
+                                <Text fontSize="sm" fontWeight="600" color="ink.primary">
+                                  {member.user.username}
+                                </Text>
+                                {isMe && <Badge variant="neutral" fontSize="3xs">YOU</Badge>}
+                              </HStack>
+                              <Text fontSize="xs" color="ink.secondary">
+                                {member.user.email}
+                              </Text>
+                            </Box>
+                          </HStack>
+
+                          <HStack spacing={3}>
+                            <Badge variant="neutral" fontSize="2xs">
+                              COLLABORATOR
+                            </Badge>
+
+                            {/* Only owner can remove members */}
+                            {isOwner && (
+                              <Tooltip label="Remove collaborator" placement="top">
+                                <IconButton
+                                  aria-label="Remove collaborator"
+                                  icon={<Trash2 size={14} />}
+                                  variant="ghost"
+                                  size="xs"
+                                  color="state.error.text"
+                                  onClick={() => handleRemoveMember(member.user.id)}
+                                />
+                              </Tooltip>
+                            )}
+                          </HStack>
+                        </Flex>
+                      )
+                    })}
                   </Stack>
                 </CardBody>
               </Card>
@@ -765,9 +1000,14 @@ export function ProjectDetailPage() {
                     value={taskAssignee}
                     onChange={(e) => setTaskAssignee(e.target.value)}
                   >
+                    {project?.owner && (
+                      <option value={project.owner.id}>
+                        {project.owner.username} (Owner)
+                      </option>
+                    )}
                     {members.map((m) => (
                       <option key={m.user.id} value={m.user.id}>
-                        {m.user.username} ({m.user.email})
+                        {m.user.username}
                       </option>
                     ))}
                   </Select>
@@ -794,7 +1034,7 @@ export function ProjectDetailPage() {
             <ModalContent>
               <ModalHeader>
                 <Flex justify="space-between" align="center" pr={8}>
-                  <Text isTruncated>{selectedTask.title}</Text>
+                  <Text isTruncated maxW="400px">{selectedTask.title}</Text>
                   <Badge variant="brand">#{selectedTask.id}</Badge>
                 </Flex>
               </ModalHeader>
@@ -831,7 +1071,7 @@ export function ProjectDetailPage() {
                   </Badge>
                 </Flex>
 
-                {/* Sub-Tabs: Details, Comments, Activity */}
+                {/* Sub-Tabs: Details & Edit, Comments, Activity */}
                 <Tabs variant="enclosed" colorScheme="brand">
                   <TabList mb={4}>
                     <Tab fontSize="xs" fontWeight="600" gap={1.5}>
@@ -846,74 +1086,184 @@ export function ProjectDetailPage() {
                   </TabList>
 
                   <TabPanels>
-                    {/* Tab 1: Details */}
+                    {/* Tab 1: Details & Edit */}
                     <TabPanel p={1}>
-                      <Stack spacing={4}>
-                        <Box>
-                          <Text fontSize="xs" fontWeight="600" color="ink.secondary" textTransform="uppercase" mb={1}>
-                            Description
-                          </Text>
-                          <Text fontSize="sm" color="ink.primary" whiteSpace="pre-wrap">
-                            {selectedTask.description || 'No description provided.'}
-                          </Text>
-                        </Box>
-
-                        <Divider borderColor="border.subtle" />
-
-                        <SimpleGrid columns={2} spacing={4} fontSize="sm">
+                      {!isEditingTask ? (
+                        <Stack spacing={4}>
                           <Box>
-                            <Text fontSize="xs" fontWeight="600" color="ink.secondary" textTransform="uppercase">
+                            <Text fontSize="xs" fontWeight="600" color="ink.secondary" textTransform="uppercase" mb={1}>
+                              Description
+                            </Text>
+                            <Text fontSize="sm" color="ink.primary" whiteSpace="pre-wrap">
+                              {selectedTask.description || 'No description provided.'}
+                            </Text>
+                          </Box>
+
+                          <Divider borderColor="border.subtle" />
+
+                          <SimpleGrid columns={2} spacing={4} fontSize="sm">
+                            <Box>
+                              <Text fontSize="xs" fontWeight="600" color="ink.secondary" textTransform="uppercase">
+                                Assignee
+                              </Text>
+                              <Text color="ink.primary" fontWeight="500">
+                                {selectedTask.assignee ? selectedTask.assignee.username : 'Unassigned'}
+                              </Text>
+                            </Box>
+
+                            <Box>
+                              <Text fontSize="xs" fontWeight="600" color="ink.secondary" textTransform="uppercase">
+                                Due Date
+                              </Text>
+                              <Text color="ink.primary" fontWeight="500">
+                                {selectedTask.due_date ? new Date(selectedTask.due_date).toLocaleDateString() : 'None'}
+                              </Text>
+                            </Box>
+                          </SimpleGrid>
+
+                          <Flex justify="flex-end" pt={2}>
+                            <Button size="sm" variant="outline" onClick={() => setIsEditingTask(true)}>
+                              Edit Task
+                            </Button>
+                          </Flex>
+                        </Stack>
+                      ) : (
+                        /* Edit Mode Form */
+                        <Stack spacing={3.5}>
+                          <FormControl isRequired>
+                            <FormLabel fontSize="xs" fontWeight="600" color="ink.secondary" textTransform="uppercase">
+                              Title
+                            </FormLabel>
+                            <Input
+                              size="sm"
+                              value={editTitle}
+                              onChange={(e) => setEditTitle(e.target.value)}
+                            />
+                          </FormControl>
+
+                          <FormControl>
+                            <FormLabel fontSize="xs" fontWeight="600" color="ink.secondary" textTransform="uppercase">
+                              Description
+                            </FormLabel>
+                            <Textarea
+                              size="sm"
+                              rows={3}
+                              value={editDesc}
+                              onChange={(e) => setEditDesc(e.target.value)}
+                            />
+                          </FormControl>
+
+                          <HStack spacing={3}>
+                            <FormControl>
+                              <FormLabel fontSize="xs" fontWeight="600" color="ink.secondary" textTransform="uppercase">
+                                Priority
+                              </FormLabel>
+                              <Select
+                                size="sm"
+                                value={editPriority}
+                                onChange={(e) => setEditPriority(e.target.value as TaskPriority)}
+                              >
+                                <option value="LOW">Low</option>
+                                <option value="MEDIUM">Medium</option>
+                                <option value="HIGH">High</option>
+                              </Select>
+                            </FormControl>
+
+                            <FormControl>
+                              <FormLabel fontSize="xs" fontWeight="600" color="ink.secondary" textTransform="uppercase">
+                                Due Date
+                              </FormLabel>
+                              <Input
+                                size="sm"
+                                type="date"
+                                value={editDueDate}
+                                onChange={(e) => setEditDueDate(e.target.value)}
+                              />
+                            </FormControl>
+                          </HStack>
+
+                          <FormControl>
+                            <FormLabel fontSize="xs" fontWeight="600" color="ink.secondary" textTransform="uppercase">
                               Assignee
-                            </Text>
-                            <Text color="ink.primary" fontWeight="500">
-                              {selectedTask.assignee ? selectedTask.assignee.username : 'Unassigned'}
-                            </Text>
-                          </Box>
+                            </FormLabel>
+                            <Select
+                              size="sm"
+                              placeholder="Unassigned"
+                              value={editAssignee}
+                              onChange={(e) => setEditAssignee(e.target.value)}
+                            >
+                              {project?.owner && (
+                                <option value={project.owner.id}>
+                                  {project.owner.username} (Owner)
+                                </option>
+                              )}
+                              {members.map((m) => (
+                                <option key={m.user.id} value={m.user.id}>
+                                  {m.user.username}
+                                </option>
+                              ))}
+                            </Select>
+                          </FormControl>
 
-                          <Box>
-                            <Text fontSize="xs" fontWeight="600" color="ink.secondary" textTransform="uppercase">
-                              Due Date
-                            </Text>
-                            <Text color="ink.primary" fontWeight="500">
-                              {selectedTask.due_date ? new Date(selectedTask.due_date).toLocaleDateString() : 'None'}
-                            </Text>
-                          </Box>
-                        </SimpleGrid>
-                      </Stack>
+                          <HStack spacing={2} justify="flex-end" pt={2}>
+                            <Button size="sm" variant="ghost" onClick={() => setIsEditingTask(false)}>
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="solid"
+                              onClick={handleSaveTaskEdits}
+                              isLoading={savingEdit}
+                            >
+                              Save Changes
+                            </Button>
+                          </HStack>
+                        </Stack>
+                      )}
                     </TabPanel>
 
                     {/* Tab 2: Comments */}
                     <TabPanel p={1}>
                       <Stack spacing={4}>
                         <Stack spacing={2.5} maxH="220px" overflowY="auto">
-                          {taskComments.map((c) => (
-                            <Box key={c.id} p={3} bg="surface.subtle" borderRadius="md" border="1px solid" borderColor="border.subtle">
-                              <Flex justify="space-between" align="center" mb={1}>
-                                <HStack spacing={2}>
-                                  <Avatar size="2xs" name={c.author.username} bg="brand.primary" />
-                                  <Text fontSize="xs" fontWeight="600" color="ink.primary">
-                                    {c.author.username}
-                                  </Text>
-                                </HStack>
-                                <HStack spacing={2}>
-                                  <Text fontSize="2xs" color="ink.muted">
-                                    {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                  </Text>
-                                  <IconButton
-                                    aria-label="Delete comment"
-                                    icon={<Trash2 size={12} />}
-                                    size="2xs"
-                                    variant="ghost"
-                                    color="state.error.text"
-                                    onClick={() => handleDeleteComment(c.id)}
-                                  />
-                                </HStack>
-                              </Flex>
-                              <Text fontSize="sm" color="ink.primary" pl={6}>
-                                {c.content}
-                              </Text>
-                            </Box>
-                          ))}
+                          {taskComments.map((c) => {
+                            const canDeleteThisComment = isOwner || c.author.id === currentUser?.id
+                            return (
+                              <Box key={c.id} p={3} bg="surface.subtle" borderRadius="md" border="1px solid" borderColor="border.subtle">
+                                <Flex justify="space-between" align="center" mb={1}>
+                                  <HStack spacing={2}>
+                                    <Avatar size="2xs" name={c.author.username} bg="brand.primary" />
+                                    <Text fontSize="xs" fontWeight="600" color="ink.primary">
+                                      {c.author.username}
+                                    </Text>
+                                    {c.author.id === currentUser?.id && (
+                                      <Badge variant="neutral" fontSize="3xs">YOU</Badge>
+                                    )}
+                                  </HStack>
+                                  <HStack spacing={2}>
+                                    <Text fontSize="2xs" color="ink.muted">
+                                      {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </Text>
+
+                                    {/* Role-based comment deletion: Owner or Author only */}
+                                    {canDeleteThisComment && (
+                                      <IconButton
+                                        aria-label="Delete comment"
+                                        icon={<Trash2 size={12} />}
+                                        size="2xs"
+                                        variant="ghost"
+                                        color="state.error.text"
+                                        onClick={() => handleDeleteComment(c.id)}
+                                      />
+                                    )}
+                                  </HStack>
+                                </Flex>
+                                <Text fontSize="sm" color="ink.primary" pl={6}>
+                                  {c.content}
+                                </Text>
+                              </Box>
+                            )
+                          })}
 
                           {taskComments.length === 0 && (
                             <Text fontSize="xs" color="ink.muted" textAlign="center" py={4}>
@@ -977,15 +1327,20 @@ export function ProjectDetailPage() {
                 </Tabs>
               </ModalBody>
               <ModalFooter justifyContent="space-between">
-                <Button
-                  variant="danger"
-                  size="sm"
-                  leftIcon={<Trash2 size={14} />}
-                  onClick={handleDeleteTask}
-                  isLoading={isDeletingTask}
-                >
-                  Delete Task
-                </Button>
+                {/* Role-based task deletion: Owner or Task Creator only */}
+                {(isOwner || selectedTask.creator?.id === currentUser?.id) ? (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    leftIcon={<Trash2 size={14} />}
+                    onClick={handleDeleteTask}
+                    isLoading={isDeletingTask}
+                  >
+                    Delete Task
+                  </Button>
+                ) : (
+                  <Box />
+                )}
                 <Button variant="ghost" size="sm" onClick={onCloseTaskDetail}>
                   Close
                 </Button>

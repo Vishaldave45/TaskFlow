@@ -29,6 +29,9 @@ import {
   useDisclosure,
   useToast,
   Badge,
+  Tabs,
+  TabList,
+  Tab,
 } from '@chakra-ui/react'
 import { Link as RouterLink } from 'react-router-dom'
 import {
@@ -39,14 +42,19 @@ import {
   ArrowRight,
   FolderKanban,
   AlertCircle,
+  Crown,
+  Shield,
 } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
 import { projectsApi } from '@/api/projects'
 import type { Project } from '@/types'
 
 export function ProjectsPage() {
+  const { user: currentUser } = useAuth()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [tabFilter, setTabFilter] = useState<'ALL' | 'OWNED' | 'SHARED'>('ALL')
   const [error, setError] = useState<string | null>(null)
 
   // New Project Modal
@@ -62,8 +70,8 @@ export function ProjectsPage() {
     setError(null)
     try {
       const data = await projectsApi.list()
-      setProjects(data)
-    } catch (err: unknown) {
+      setProjects(Array.isArray(data) ? data : [])
+    } catch {
       setError('Failed to load projects. Please ensure the backend server is running.')
     } finally {
       setLoading(false)
@@ -95,7 +103,7 @@ export function ProjectsPage() {
         duration: 3000,
         isClosable: true,
       })
-    } catch (err: unknown) {
+    } catch {
       toast({
         title: 'Creation failed.',
         description: 'Could not create project.',
@@ -108,10 +116,16 @@ export function ProjectsPage() {
     }
   }
 
-  const filteredProjects = projects.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    (p.description && p.description.toLowerCase().includes(search.toLowerCase()))
-  )
+  const filteredProjects = (Array.isArray(projects) ? projects : []).filter((p) => {
+    const matchesSearch =
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      (p.description && p.description.toLowerCase().includes(search.toLowerCase()))
+
+    const isOwner = p.owner?.id === currentUser?.id
+    if (tabFilter === 'OWNED') return matchesSearch && isOwner
+    if (tabFilter === 'SHARED') return matchesSearch && !isOwner
+    return matchesSearch
+  })
 
   return (
     <Box py={8}>
@@ -123,7 +137,7 @@ export function ProjectsPage() {
               Projects
             </Heading>
             <Text fontSize="sm" color="ink.secondary">
-              Manage your workspace projects, track velocity, and coordinate team members.
+              Manage workspaces, track sprint tasks, and collaborate with your team.
             </Text>
           </Stack>
 
@@ -137,18 +151,41 @@ export function ProjectsPage() {
           </Button>
         </Flex>
 
-        {/* Filter / Search Bar */}
-        <Card mb={8} p={2}>
-          <InputGroup>
-            <InputLeftElement pointerEvents="none">
-              <Search size={18} color="#94A3B8" />
-            </InputLeftElement>
-            <Input
-              placeholder="Search projects by title or description..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </InputGroup>
+        {/* Filter Controls & Role Tabs */}
+        <Card mb={8} p={4}>
+          <Stack spacing={4}>
+            <Tabs
+              variant="soft-rounded"
+              colorScheme="brand"
+              size="sm"
+              onChange={(idx) => {
+                if (idx === 0) setTabFilter('ALL')
+                if (idx === 1) setTabFilter('OWNED')
+                if (idx === 2) setTabFilter('SHARED')
+              }}
+            >
+              <TabList>
+                <Tab fontWeight="600">All Projects ({projects.length})</Tab>
+                <Tab fontWeight="600">
+                  Owned by Me ({projects.filter((p) => p.owner?.id === currentUser?.id).length})
+                </Tab>
+                <Tab fontWeight="600">
+                  Shared with Me ({projects.filter((p) => p.owner?.id !== currentUser?.id).length})
+                </Tab>
+              </TabList>
+            </Tabs>
+
+            <InputGroup size="sm">
+              <InputLeftElement pointerEvents="none">
+                <Search size={16} color="#94A3B8" />
+              </InputLeftElement>
+              <Input
+                placeholder="Search projects by title or description..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </InputGroup>
+          </Stack>
         </Card>
 
         {/* Error State */}
@@ -194,14 +231,14 @@ export function ProjectsPage() {
                 <FolderKanban size={28} />
               </Flex>
               <Heading as="h3" size="md" color="ink.primary">
-                {search ? 'No projects matched your search' : 'No projects yet'}
+                {search || tabFilter !== 'ALL' ? 'No projects matched your filters' : 'No projects yet'}
               </Heading>
               <Text fontSize="sm" color="ink.secondary">
-                {search
-                  ? 'Try changing your search terms or filters.'
-                  : 'Get started by creating your first project workspace.'}
+                {search || tabFilter !== 'ALL'
+                  ? 'Try adjusting your search criteria or role tabs.'
+                  : 'Get started by initializing your first workspace.'}
               </Text>
-              {!search && (
+              {!search && tabFilter === 'ALL' && (
                 <Button variant="solid" leftIcon={<FolderPlus size={16} />} onClick={onOpen}>
                   Create First Project
                 </Button>
@@ -213,59 +250,83 @@ export function ProjectsPage() {
         {/* Project Cards Grid */}
         {!loading && filteredProjects.length > 0 && (
           <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-            {filteredProjects.map((project) => (
-              <Card
-                key={project.id}
-                as={RouterLink}
-                to={`/projects/${project.id}`}
-                _hover={{
-                  textDecoration: 'none',
-                  borderColor: 'border.strong',
-                  boxShadow: 'hard',
-                  transform: 'translateY(-2px)',
-                }}
-                transition="all 0.15s ease-in-out"
-                display="flex"
-                flexDirection="column"
-                justifyContent="space-between"
-              >
-                <CardHeader pb={2}>
-                  <Flex justify="space-between" align="start" gap={2}>
-                    <Heading as="h2" size="md" fontWeight="600" color="ink.primary" isTruncated>
-                      {project.name}
-                    </Heading>
-                    <Badge variant="brand" fontSize="2xs">
-                      #{project.id}
-                    </Badge>
-                  </Flex>
-                </CardHeader>
+            {filteredProjects.map((project) => {
+              const isOwner = project.owner?.id === currentUser?.id
 
-                <CardBody py={2}>
-                  <Text fontSize="sm" color="ink.secondary" noOfLines={2} minH="40px">
-                    {project.description || 'No description provided.'}
-                  </Text>
-                </CardBody>
+              return (
+                <Card
+                  key={project.id}
+                  as={RouterLink}
+                  to={`/projects/${project.id}`}
+                  _hover={{
+                    textDecoration: 'none',
+                    borderColor: 'border.strong',
+                    boxShadow: 'hard',
+                    transform: 'translateY(-2px)',
+                  }}
+                  transition="all 0.15s ease-in-out"
+                  display="flex"
+                  flexDirection="column"
+                  justifyContent="space-between"
+                  position="relative"
+                  overflow="hidden"
+                >
+                  {/* Priority / Role top accent */}
+                  <Box
+                    position="absolute"
+                    top={0}
+                    left={0}
+                    right={0}
+                    h="3px"
+                    bg={isOwner ? 'brand.primary' : 'border.strong'}
+                  />
 
-                <CardFooter pt={3} borderTop="1px solid" borderColor="border.subtle">
-                  <Flex justify="space-between" align="center" w="full">
-                    <HStack spacing={4} fontSize="xs" color="ink.muted">
-                      <HStack spacing={1}>
-                        <Users size={14} />
-                        <Text>{project.members_count || 1} members</Text>
-                      </HStack>
-                      <HStack spacing={1}>
-                        <Calendar size={14} />
-                        <Text>{new Date(project.created_at).toLocaleDateString()}</Text>
-                      </HStack>
-                    </HStack>
+                  <CardHeader pb={2}>
+                    <Flex justify="space-between" align="start" gap={2}>
+                      <Heading as="h2" size="md" fontWeight="600" color="ink.primary" isTruncated>
+                        {project.name}
+                      </Heading>
 
-                    <Flex color="brand.primary">
-                      <ArrowRight size={16} />
+                      {/* Role Badge */}
+                      {isOwner ? (
+                        <Badge variant="brand" display="flex" alignItems="center" gap={1} fontSize="3xs" px={2} py={0.5}>
+                          <Crown size={10} /> OWNER
+                        </Badge>
+                      ) : (
+                        <Badge variant="neutral" display="flex" alignItems="center" gap={1} fontSize="3xs" px={2} py={0.5}>
+                          <Shield size={10} /> COLLABORATOR
+                        </Badge>
+                      )}
                     </Flex>
-                  </Flex>
-                </CardFooter>
-              </Card>
-            ))}
+                  </CardHeader>
+
+                  <CardBody py={2}>
+                    <Text fontSize="sm" color="ink.secondary" noOfLines={2} minH="40px">
+                      {project.description || 'No description provided.'}
+                    </Text>
+                  </CardBody>
+
+                  <CardFooter pt={3} borderTop="1px solid" borderColor="border.subtle">
+                    <Flex justify="space-between" align="center" w="full">
+                      <HStack spacing={4} fontSize="xs" color="ink.muted">
+                        <HStack spacing={1}>
+                          <Users size={14} />
+                          <Text>{project.members_count || 1} members</Text>
+                        </HStack>
+                        <HStack spacing={1}>
+                          <Calendar size={14} />
+                          <Text>{new Date(project.created_at).toLocaleDateString()}</Text>
+                        </HStack>
+                      </HStack>
+
+                      <Flex color="brand.primary">
+                        <ArrowRight size={16} />
+                      </Flex>
+                    </Flex>
+                  </CardFooter>
+                </Card>
+              )
+            })}
           </SimpleGrid>
         )}
 
