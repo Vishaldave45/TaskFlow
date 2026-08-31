@@ -3,6 +3,7 @@ from rest_framework.exceptions import NotFound, PermissionDenied
 from django.db.models import Q
 from .models import Task
 from .serializers import TaskSerializer
+from .permissions import IsProjectMemberForTask
 from apps.projects.models import Project
 from apps.activity.models import ActivityLog
 
@@ -25,30 +26,49 @@ class GlobalTaskListView(generics.ListAPIView):
         return queryset.order_by('-created_at')
 
 class ProjectTaskListCreateView(generics.ListCreateAPIView):
+    """List tasks for a specific project or create a new task in that project."""
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = TaskSerializer
 
     def get_queryset(self):
         project_id = self.kwargs.get('project_id')
-        return Task.objects.filter(project_id=project_id).order_by('-created_at')
+        user = self.request.user
 
-    def perform_create(self, serializer):
-        project_id = self.kwargs.get('project_id')
+        # Ensure requester is owner or member of this project
         try:
             project = Project.objects.get(id=project_id)
         except Project.DoesNotExist:
             raise NotFound("Project not found.")
 
-        task = serializer.save(project=project, creator=self.request.user)
+        is_member = project.owner == user or project.members.filter(user=user).exists()
+        if not is_member:
+            raise PermissionDenied("You do not have permission to view tasks for this project.")
+
+        return Task.objects.filter(project_id=project_id).order_by('-created_at')
+
+    def perform_create(self, serializer):
+        project_id = self.kwargs.get('project_id')
+        user = self.request.user
+        try:
+            project = Project.objects.get(id=project_id)
+        except Project.DoesNotExist:
+            raise NotFound("Project not found.")
+
+        is_member = project.owner == user or project.members.filter(user=user).exists()
+        if not is_member:
+            raise PermissionDenied("You do not have permission to create tasks in this project.")
+
+        task = serializer.save(project=project, creator=user)
         ActivityLog.objects.create(
             task=task,
-            user=self.request.user,
+            user=user,
             action="Created task",
             new_value=task.title
         )
 
 class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    """Retrieve, update, or delete a task with object-level permission enforcement."""
+    permission_classes = [permissions.IsAuthenticated, IsProjectMemberForTask]
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
 
