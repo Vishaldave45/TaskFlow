@@ -1,9 +1,28 @@
 from rest_framework import generics, permissions, status
 from rest_framework.exceptions import NotFound, PermissionDenied
+from django.db.models import Q
 from .models import Task
 from .serializers import TaskSerializer
 from apps.projects.models import Project
 from apps.activity.models import ActivityLog
+
+class GlobalTaskListView(generics.ListAPIView):
+    """List tasks accessible by current user across all projects (assigned, created, or in member projects)."""
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = TaskSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        assigned_to_me = self.request.query_params.get('assigned_to_me')
+        
+        queryset = Task.objects.filter(
+            Q(project__owner=user) | Q(project__members__user=user) | Q(assignee=user)
+        ).distinct()
+
+        if assigned_to_me == 'true':
+            queryset = queryset.filter(assignee=user)
+
+        return queryset.order_by('-created_at')
 
 class ProjectTaskListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]

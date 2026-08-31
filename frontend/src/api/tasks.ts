@@ -2,6 +2,13 @@ import { apiClient } from './client'
 import type { Task, PaginatedResponse } from '@/types'
 
 export const tasksApi = {
+  async listAll(params?: { assigned_to_me?: boolean }): Promise<Task[]> {
+    const query = params?.assigned_to_me ? '?assigned_to_me=true' : ''
+    const data = await apiClient<PaginatedResponse<Task> | Task[]>(`/tasks/${query}`)
+    if (Array.isArray(data)) return data
+    return data.results || []
+  },
+
   async listByProject(projectId: number): Promise<Task[]> {
     const data = await apiClient<PaginatedResponse<Task> | Task[]>(`/projects/${projectId}/tasks/`)
     if (Array.isArray(data)) return data

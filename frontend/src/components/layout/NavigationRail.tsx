@@ -25,7 +25,7 @@ import {
   SimpleGrid,
 } from '@chakra-ui/react'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
-import { FolderKanban, Terminal, LogOut, User as UserIcon, CheckSquare, ShieldCheck, Key, Server } from 'lucide-react'
+import { FolderKanban, Terminal, LogOut, User as UserIcon, CheckSquare, ShieldCheck, Key, Server, LayoutDashboard } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { WorkroomSurface, MetaLabel } from '@/components/ui'
 
@@ -134,16 +134,16 @@ export function NavigationRail() {
           {/* Primary Navigation Rail Items */}
           <VStack spacing={2} w="full" align="center">
             <NavItem
+              icon={LayoutDashboard}
+              label="Dashboard & Metrics"
+              to="/dashboard"
+              isActive={location.pathname === '/dashboard'}
+            />
+            <NavItem
               icon={FolderKanban}
               label="Workspaces & Projects"
               to="/projects"
               isActive={isProjectsActive}
-            />
-            <NavItem
-              icon={CheckSquare}
-              label="Tasks Ledger"
-              to="/projects"
-              isActive={false}
             />
           </VStack>
         </VStack>

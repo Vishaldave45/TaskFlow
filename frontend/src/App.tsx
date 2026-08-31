@@ -6,6 +6,7 @@ import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { ProjectsPage } from '@/pages/ProjectsPage'
 import { ProjectDetailPage } from '@/pages/ProjectDetailPage'
+import { DashboardPage } from '@/pages/DashboardPage'
 
 function App() {
   return (
@@ -19,13 +20,14 @@ function App() {
       {/* Protected application routes */}
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/projects/:id" element={<ProjectDetailPage />} />
         </Route>
       </Route>
 
       {/* Default redirect */}
-      <Route path="*" element={<Navigate to="/projects" replace />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )
 }
