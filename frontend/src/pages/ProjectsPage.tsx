@@ -108,9 +108,9 @@ export function ProjectsPage() {
     <PageContainer size="standard">
       {/* Editorial Page Header */}
       <PageHeader
-        category="DIRECTORY // WORKSPACES"
-        title="Project Registry"
-        description="Active workspaces, team allocations, and task execution pipelines."
+        category="WORKSPACES"
+        title="Projects"
+        description="View and manage all your team projects and tasks."
         actions={
           <Button
             variant="solid"
@@ -225,7 +225,7 @@ export function ProjectsPage() {
             borderColor="border.default"
             display={{ base: 'none', md: 'flex' }}
           >
-            <Box flex="5"><MetaLabel variant="subtle">PROJECT // SCOPE</MetaLabel></Box>
+            <Box flex="5"><MetaLabel variant="subtle">PROJECT NAME</MetaLabel></Box>
             <Box flex="2"><MetaLabel variant="subtle">YOUR ROLE</MetaLabel></Box>
             <Box flex="2"><MetaLabel variant="subtle">COLLABORATORS</MetaLabel></Box>
             <Box flex="2"><MetaLabel variant="subtle">INITIALIZED</MetaLabel></Box>

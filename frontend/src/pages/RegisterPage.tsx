@@ -44,31 +44,21 @@ export function RegisterPage() {
                 <Flex w="26px" h="26px" bg="surface.base" color="brand.primary" borderRadius="xs" align="center" justify="center">
                   <Terminal size={14} />
                 </Flex>
-                <Text fontFamily="mono" fontSize="xs" fontWeight="700" letterSpacing="widest">TASKFLOW // INITIALIZE</Text>
+                <Text fontFamily="mono" fontSize="xs" fontWeight="700" letterSpacing="widest">TASKFLOW</Text>
               </HStack>
               <Stack spacing={4}>
                 <Heading as="h2" fontSize={{ base: '2xl', md: '3xl' }} fontWeight="700" lineHeight="shorter" letterSpacing="tight" color="ink.inverse">
-                  Built for builders who value execution over friction.
+                  Create your workspace
                 </Heading>
                 <Text fontSize="xs" color="brand.subtle" lineHeight="base">
-                  Instant project governance, automated audit tracking, and high-density sprint workflows.
+                  Start collaborating with your team across projects and tasks.
                 </Text>
               </Stack>
             </Stack>
-            <Box pt={8}>
-              <Divider borderColor="rgba(250, 249, 245, 0.2)" mb={4} />
-              <HStack justify="space-between" fontSize="3xs" fontFamily="mono" color="brand.subtle" letterSpacing="wider">
-                <Text>OPEN STANDARDS</Text>
-                <Text>REST + RBAC ENGINE</Text>
-              </HStack>
-            </Box>
           </Flex>
           <Flex gridColumn={{ base: 'span 1', md: 'span 7' }} p={{ base: 6, md: 10 }} direction="column" justify="center" bg="surface.base">
             <Stack spacing={6} maxW="400px" mx="auto" w="full">
-              <Stack spacing={1}>
-                <Text fontFamily="mono" fontSize="2xs" fontWeight="700" color="ink.muted" textTransform="uppercase" letterSpacing="widest">Account Registration</Text>
-                <Heading as="h1" size="lg" fontWeight="700" color="ink.primary">Create new account</Heading>
-              </Stack>
+              <Heading as="h1" size="lg" fontWeight="700" color="ink.primary">Create Account</Heading>
               {error && (
                 <Box bg="state.error.bg" border="1px solid" borderColor="state.error.border" p={3} borderRadius="sm">
                   <HStack spacing={2} align="start">

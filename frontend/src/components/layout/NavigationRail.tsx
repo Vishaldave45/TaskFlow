@@ -25,9 +25,9 @@ import {
   SimpleGrid,
 } from '@chakra-ui/react'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
-import { FolderKanban, Terminal, LogOut, User as UserIcon, CheckSquare, ShieldCheck, Key, Server, LayoutDashboard } from 'lucide-react'
+import { FolderKanban, Terminal, LogOut, User as UserIcon, LayoutDashboard } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
-import { WorkroomSurface, MetaLabel } from '@/components/ui'
+import { WorkroomSurface } from '@/components/ui'
 
 interface NavItemProps {
   icon: typeof FolderKanban
@@ -110,7 +110,7 @@ export function NavigationRail() {
         {/* Brand Icon & Main Tools */}
         <VStack spacing={4} w="full" align="center">
           {/* Brand Stamp */}
-          <Tooltip label="TaskFlow // Workroom" placement="right" hasArrow bg="brand.primary" color="ink.inverse" fontSize="xs">
+          <Tooltip label="TaskFlow" placement="right" hasArrow bg="brand.primary" color="ink.inverse" fontSize="xs">
             <Flex
               as={RouterLink}
               to="/projects"
@@ -279,54 +279,13 @@ export function NavigationRail() {
                       borderColor="border.dark"
                     />
                     <VStack align="flex-start" spacing={0.5}>
-                      <HStack spacing={2}>
-                        <Text fontSize="md" fontWeight="700" color="ink.primary">
-                          {user.username}
-                        </Text>
-                        <Badge variant="brand" fontSize="3xs">
-                          ACTIVE
-                        </Badge>
-                      </HStack>
+                      <Text fontSize="md" fontWeight="700" color="ink.primary">
+                        {user.username}
+                      </Text>
                       <Text fontSize="xs" color="ink.secondary">
                         {user.email}
                       </Text>
-                      <MetaLabel variant="subtle" mt={1}>
-                        USER ID: #{user.id}
-                      </MetaLabel>
                     </VStack>
-                  </HStack>
-                </WorkroomSurface>
-
-                {/* Session Security Details */}
-                <SimpleGrid columns={2} spacing={3}>
-                  <WorkroomSurface variant="base" p={3}>
-                    <HStack spacing={2} mb={1}>
-                      <ShieldCheck size={14} color="#173B36" />
-                      <MetaLabel variant="dark">SECURITY</MetaLabel>
-                    </HStack>
-                    <Text fontSize="2xs" color="ink.secondary" fontFamily="mono">
-                      JWT ACCESS // REFRESH
-                    </Text>
-                  </WorkroomSurface>
-
-                  <WorkroomSurface variant="base" p={3}>
-                    <HStack spacing={2} mb={1}>
-                      <Server size={14} color="#173B36" />
-                      <MetaLabel variant="dark">ENGINE</MetaLabel>
-                    </HStack>
-                    <Text fontSize="2xs" color="ink.secondary" fontFamily="mono">
-                      DJANGO REST V1
-                    </Text>
-                  </WorkroomSurface>
-                </SimpleGrid>
-
-                {/* Session Actions Notice */}
-                <WorkroomSurface variant="canvas" p={3}>
-                  <HStack spacing={2} align="start">
-                    <Key size={14} style={{ marginTop: '2px', flexShrink: 0 }} />
-                    <Text fontSize="xs" color="ink.secondary" lineHeight="short">
-                      Your credentials are authenticated using JSON Web Tokens. Sign out to revoke your active token from this terminal.
-                    </Text>
                   </HStack>
                 </WorkroomSurface>
               </VStack>

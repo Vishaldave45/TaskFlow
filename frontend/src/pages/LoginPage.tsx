@@ -44,24 +44,17 @@ export function LoginPage() {
                 <Flex w="26px" h="26px" bg="surface.base" color="brand.primary" borderRadius="xs" align="center" justify="center">
                   <Terminal size={14} />
                 </Flex>
-                <Text fontFamily="mono" fontSize="xs" fontWeight="700" letterSpacing="widest">TASKFLOW // WORKROOM</Text>
+                <Text fontFamily="mono" fontSize="xs" fontWeight="700" letterSpacing="widest">TASKFLOW</Text>
               </HStack>
               <Stack spacing={4}>
                 <Heading as="h2" fontSize={{ base: '2xl', md: '3xl' }} fontWeight="700" lineHeight="shorter" letterSpacing="tight" color="ink.inverse">
-                  Work moves forward when everyone knows what matters next.
+                  Task and Project Management
                 </Heading>
                 <Text fontSize="xs" color="brand.subtle" lineHeight="base">
-                  A high-precision task execution environment built with tactile clarity, explicit roles, and zero distraction.
+                  Track projects, assign tasks, and monitor team progress in real time.
                 </Text>
               </Stack>
             </Stack>
-            <Box pt={8}>
-              <Divider borderColor="rgba(250, 249, 245, 0.2)" mb={4} />
-              <HStack justify="space-between" fontSize="3xs" fontFamily="mono" color="brand.subtle" letterSpacing="wider">
-                <Text>SYSTEM V2.0</Text>
-                <Text>SECURE JWT AUTH</Text>
-              </HStack>
-            </Box>
           </Flex>
           <Flex gridColumn={{ base: 'span 1', md: 'span 7' }} p={{ base: 6, md: 10 }} direction="column" justify="center" bg="surface.base">
             <Stack spacing={6} maxW="400px" mx="auto" w="full">
