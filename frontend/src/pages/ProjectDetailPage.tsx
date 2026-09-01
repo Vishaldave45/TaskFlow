@@ -14,16 +14,19 @@ import {
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { projectsApi } from '@/api/projects'
-import { tasksApi } from '@/api/tasks'
 import { commentsApi } from '@/api/comments'
 import { activityApi } from '@/api/activity'
 import { PageContainer } from '@/components/layout'
-import { ProjectHeader, ProjectStats } from '@/features/projects'
+import { ProjectHeader, ProjectStats, useDeleteProject } from '@/features/projects'
 import {
   TaskBoard,
   TaskFilters,
   TaskCreateModal,
   TaskDetailModal,
+  useTasks,
+  useCreateTask,
+  useUpdateTask,
+  useDeleteTask,
 } from '@/features/tasks'
 import { MembersModal, MembersPanel } from '@/features/members'
 import type {
@@ -43,9 +46,14 @@ export function ProjectDetailPage() {
   const { user: currentUser } = useAuth()
 
   const [project, setProject] = useState<Project | null>(null)
-  const [tasks, setTasks] = useState<Task[]>([])
   const [members, setMembers] = useState<ProjectMember[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Tasks Query & Mutations
+  const { data: tasks = [] } = useTasks(projectId)
+  const createTask = useCreateTask()
+  const updateTask = useUpdateTask()
+  const deleteTask = useDeleteTask()
 
   // Role Checks
   const isOwner = currentUser?.id === project?.owner?.id
@@ -73,7 +81,7 @@ export function ProjectDetailPage() {
   } = useDisclosure()
 
   // Delete Alert
-  const [isDeletingProject, setIsDeletingProject] = useState(false)
+  const deleteProject = useDeleteProject()
   const {
     isOpen: isDeleteAlertOpen,
     onOpen: onOpenDeleteAlert,
@@ -86,7 +94,6 @@ export function ProjectDetailPage() {
   const [taskPriority, setTaskPriority] = useState<TaskPriority>('MEDIUM')
   const [taskAssignee, setTaskAssignee] = useState<string>('')
   const [taskDueDate, setTaskDueDate] = useState('')
-  const [savingTask, setSavingTask] = useState(false)
 
   // Selected Task Detail & Edit
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
@@ -96,13 +103,11 @@ export function ProjectDetailPage() {
   const [editAssignee, setEditAssignee] = useState<string>('')
   const [editDueDate, setEditDueDate] = useState('')
   const [isEditingTask, setIsEditingTask] = useState(false)
-  const [savingEdit, setSavingEdit] = useState(false)
 
   const [taskComments, setTaskComments] = useState<Comment[]>([])
   const [taskActivity, setTaskActivity] = useState<ActivityLog[]>([])
   const [newComment, setNewComment] = useState('')
   const [submittingComment, setSubmittingComment] = useState(false)
-  const [isDeletingTask, setIsDeletingTask] = useState(false)
 
   // Add Member Form
   const [memberEmail, setMemberEmail] = useState('')
@@ -114,13 +119,11 @@ export function ProjectDetailPage() {
     if (!projectId) return
     setLoading(true)
     try {
-      const [projectData, tasksData, membersData] = await Promise.all([
+      const [projectData, membersData] = await Promise.all([
         projectsApi.get(projectId),
-        tasksApi.listByProject(projectId),
         projectsApi.listMembers(projectId).catch(() => []),
       ])
       setProject(projectData)
-      setTasks(Array.isArray(tasksData) ? tasksData : [])
       setMembers(Array.isArray(membersData) ? membersData : [])
     } catch {
       toast({
@@ -143,16 +146,17 @@ export function ProjectDetailPage() {
     e.preventDefault()
     if (!taskTitle.trim()) return
 
-    setSavingTask(true)
     try {
-      const created = await tasksApi.create(projectId, {
-        title: taskTitle.trim(),
-        description: taskDesc.trim(),
-        priority: taskPriority,
-        assignee_id: taskAssignee ? Number(taskAssignee) : null,
-        due_date: taskDueDate || null,
+      await createTask.mutateAsync({
+        projectId,
+        data: {
+          title: taskTitle.trim(),
+          description: taskDesc.trim(),
+          priority: taskPriority,
+          assignee_id: taskAssignee ? Number(taskAssignee) : null,
+          due_date: taskDueDate || null,
+        },
       })
-      setTasks((prev) => [created, ...prev])
       setTaskTitle('')
       setTaskDesc('')
       setTaskPriority('MEDIUM')
@@ -172,15 +176,16 @@ export function ProjectDetailPage() {
         duration: 3000,
         isClosable: true,
       })
-    } finally {
-      setSavingTask(false)
     }
   }
 
   const handleStatusChange = async (task: Task, newStatus: TaskStatus) => {
     try {
-      const updated = await tasksApi.update(task.id, { status: newStatus })
-      setTasks((prev) => prev.map((t) => (t.id === task.id ? updated : t)))
+      const updated = await updateTask.mutateAsync({
+        taskId: task.id,
+        projectId,
+        data: { status: newStatus },
+      })
       if (selectedTask && selectedTask.id === task.id) {
         setSelectedTask(updated)
         activityApi.listByTask(task.id).then(setTaskActivity).catch(() => {})
@@ -224,17 +229,19 @@ export function ProjectDetailPage() {
   const handleSaveTaskEdits = async () => {
     if (!selectedTask || !editTitle.trim()) return
 
-    setSavingEdit(true)
     try {
-      const updated = await tasksApi.update(selectedTask.id, {
-        title: editTitle.trim(),
-        description: editDesc.trim(),
-        priority: editPriority,
-        assignee_id: editAssignee ? Number(editAssignee) : null,
-        due_date: editDueDate || null,
+      const updated = await updateTask.mutateAsync({
+        taskId: selectedTask.id,
+        projectId,
+        data: {
+          title: editTitle.trim(),
+          description: editDesc.trim(),
+          priority: editPriority,
+          assignee_id: editAssignee ? Number(editAssignee) : null,
+          due_date: editDueDate || null,
+        },
       })
       setSelectedTask(updated)
-      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
       setIsEditingTask(false)
       toast({
         title: 'Task updated',
@@ -251,17 +258,16 @@ export function ProjectDetailPage() {
         status: 'error',
         duration: 3000,
       })
-    } finally {
-      setSavingEdit(false)
     }
   }
 
   const handleDeleteTask = async () => {
     if (!selectedTask) return
-    setIsDeletingTask(true)
     try {
-      await tasksApi.delete(selectedTask.id)
-      setTasks((prev) => prev.filter((t) => t.id !== selectedTask.id))
+      await deleteTask.mutateAsync({
+        taskId: selectedTask.id,
+        projectId,
+      })
       onCloseTaskDetail()
       toast({
         title: 'Task deleted',
@@ -274,8 +280,6 @@ export function ProjectDetailPage() {
         status: 'error',
         duration: 3000,
       })
-    } finally {
-      setIsDeletingTask(false)
     }
   }
 
@@ -371,14 +375,14 @@ export function ProjectDetailPage() {
   }
 
   const handleDeleteProject = async () => {
-    setIsDeletingProject(true)
     try {
-      await projectsApi.delete(projectId)
+      await deleteProject.mutateAsync(projectId)
       toast({
         title: 'Project deleted',
         status: 'success',
         duration: 2500,
       })
+      onCloseDeleteAlert()
       navigate('/projects')
     } catch {
       toast({
@@ -386,9 +390,6 @@ export function ProjectDetailPage() {
         status: 'error',
         duration: 3000,
       })
-    } finally {
-      setIsDeletingProject(false)
-      onCloseDeleteAlert()
     }
   }
 
@@ -443,7 +444,7 @@ export function ProjectDetailPage() {
         isDeleteAlertOpen={isDeleteAlertOpen}
         onCloseDeleteAlert={onCloseDeleteAlert}
         onDeleteProject={handleDeleteProject}
-        isDeletingProject={isDeletingProject}
+        isDeletingProject={deleteProject.isPending}
       />
 
       {/* Velocity Progress Rail Sheet */}
@@ -514,7 +515,7 @@ export function ProjectDetailPage() {
         setTaskAssignee={setTaskAssignee}
         taskDueDate={taskDueDate}
         setTaskDueDate={setTaskDueDate}
-        savingTask={savingTask}
+        savingTask={createTask.isPending}
         onCreateTask={handleCreateTask}
         project={project}
         members={members}
@@ -542,10 +543,10 @@ export function ProjectDetailPage() {
         setEditAssignee={setEditAssignee}
         editDueDate={editDueDate}
         setEditDueDate={setEditDueDate}
-        savingEdit={savingEdit}
+        savingEdit={updateTask.isPending}
         onSaveTaskEdits={handleSaveTaskEdits}
         onDeleteTask={handleDeleteTask}
-        isDeletingTask={isDeletingTask}
+        isDeletingTask={deleteTask.isPending}
         taskComments={taskComments}
         newComment={newComment}
         setNewComment={setNewComment}

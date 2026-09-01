@@ -64,19 +64,30 @@ export interface Comment {
   author: User
   task: number
   created_at: string
-  updated_at: string
 }
 
-// Activity Log Types
-export interface ActivityLog {
+// Activity Types
+export type ActivityAction =
+  | 'PROJECT_CREATED'
+  | 'PROJECT_UPDATED'
+  | 'TASK_CREATED'
+  | 'TASK_UPDATED'
+  | 'TASK_DELETED'
+  | 'TASK_STATUS_CHANGED'
+  | 'COMMENT_ADDED'
+  | 'MEMBER_ADDED'
+  | 'MEMBER_REMOVED'
+
+export interface Activity {
   id: number
-  action: string
-  user: User | null
-  task: number
-  old_value: string | null
-  new_value: string | null
+  project: number
+  user: User
+  action: ActivityAction
+  details: Record<string, unknown>
   created_at: string
 }
+
+export type ActivityLog = Activity
 
 // Paginated Response
 export interface PaginatedResponse<T> {
@@ -84,4 +95,54 @@ export interface PaginatedResponse<T> {
   next: string | null
   previous: string | null
   results: T[]
+}
+
+// Project Payloads
+export interface CreateProjectPayload {
+  name: string
+  description?: string
+}
+
+export interface UpdateProjectPayload {
+  name?: string
+  description?: string
+}
+
+export interface UpdateProjectVariables {
+  id: number
+  data: UpdateProjectPayload
+}
+
+// Task Payloads & Variables
+export interface CreateTaskPayload {
+  title: string
+  description?: string
+  priority?: string
+  assignee_id?: number | null
+  due_date?: string | null
+}
+
+export interface CreateTaskVariables {
+  projectId: number
+  data: CreateTaskPayload
+}
+
+export interface UpdateTaskPayload {
+  title?: string
+  description?: string
+  status?: string
+  priority?: string
+  assignee_id?: number | null
+  due_date?: string | null
+}
+
+export interface UpdateTaskVariables {
+  taskId: number
+  projectId?: number
+  data: UpdateTaskPayload
+}
+
+export interface DeleteTaskVariables {
+  taskId: number
+  projectId: number
 }

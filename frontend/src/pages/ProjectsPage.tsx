@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   Box,
   Button,
@@ -41,55 +41,37 @@ import {
   Shield,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
-import { projectsApi } from '@/api/projects'
+import { useProjects, useCreateProject } from '@/features/projects'
 import { PageContainer, PageHeader } from '@/components/layout'
 import { WorkroomSurface, EmptyState, MetaLabel } from '@/components/ui'
-import type { Project } from '@/types'
 
 export function ProjectsPage() {
   const { user: currentUser } = useAuth()
-  const [projects, setProjects] = useState<Project[]>([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [tabFilter, setTabFilter] = useState<'ALL' | 'OWNED' | 'SHARED'>('ALL')
-  const [error, setError] = useState<string | null>(null)
+  const {
+    data: projects = [],
+    isPending: loading,
+    isError,
+  } = useProjects()
+  const createProject = useCreateProject()
 
   // New Project Modal
   const { isOpen, onOpen, onClose } = useDisclosure()
   const [newProjectName, setNewProjectName] = useState('')
   const [newProjectDesc, setNewProjectDesc] = useState('')
-  const [creating, setCreating] = useState(false)
 
   const toast = useToast()
-
-  const fetchProjects = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await projectsApi.list()
-      setProjects(Array.isArray(data) ? data : [])
-    } catch {
-      setError('Failed to load projects. Please verify backend connection.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchProjects()
-  }, [])
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newProjectName.trim()) return
 
-    setCreating(true)
     try {
-      const created = await projectsApi.create({
+      const created = await createProject.mutateAsync({
         name: newProjectName.trim(),
         description: newProjectDesc.trim(),
       })
-      setProjects((prev) => [created, ...prev])
       setNewProjectName('')
       setNewProjectDesc('')
       onClose()
@@ -108,8 +90,6 @@ export function ProjectsPage() {
         duration: 4000,
         isClosable: true,
       })
-    } finally {
-      setCreating(false)
     }
   }
 
@@ -185,12 +165,12 @@ export function ProjectsPage() {
       </Box>
 
       {/* Error State */}
-      {error && (
+      {isError && (
         <Box p={4} mb={6} bg="state.error.bg" border="1px solid" borderColor="state.error.border" borderRadius="sm">
           <HStack spacing={3}>
             <AlertCircle size={18} color="#991B1B" />
             <Text fontSize="xs" color="state.error.text" fontWeight="500">
-              {error}
+              Failed to load projects.
             </Text>
           </HStack>
         </Box>
@@ -411,7 +391,7 @@ export function ProjectsPage() {
               <Button
                 type="submit"
                 variant="solid"
-                isLoading={creating}
+                isLoading={createProject.isPending}
                 loadingText="Creating..."
               >
                 Create Project

@@ -1,39 +1,37 @@
 import { useEffect, useState } from 'react'
 import {
   Box,
-  Flex,
-  HStack,
-  Heading,
+  Button,
   SimpleGrid,
   Skeleton,
   Stack,
   Text,
+  useToast,
   Badge,
-  Button,
-  Divider,
+  HStack,
+  Flex,
+  Heading,
   Progress,
   IconButton,
   Menu,
   MenuButton,
   MenuList,
   MenuItem,
-  useToast,
 } from '@chakra-ui/react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import {
   FolderKanban,
-  CheckCircle2,
-  Clock,
-  ArrowRight,
   TrendingUp,
   AlertCircle,
-  MoreVertical,
-  Plus,
   Zap,
+  CheckCircle2,
+  Clock,
+  MoreVertical,
+  ArrowRight,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { projectsApi } from '@/api/projects'
-import { tasksApi } from '@/api/tasks'
+import { useAllTasks, useUpdateTask } from '@/features/tasks'
 import { PageContainer, PageHeader } from '@/components/layout'
 import { WorkroomSurface, MetaLabel, StatusBadge } from '@/components/ui'
 import type { Project, Task, TaskStatus } from '@/types'
@@ -44,19 +42,20 @@ export function DashboardPage() {
   const toast = useToast()
 
   const [projects, setProjects] = useState<Project[]>([])
-  const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
+
+  // TanStack Tasks Query & Mutation
+  const {
+    data: tasks = [],
+  } = useAllTasks()
+  const updateTask = useUpdateTask()
 
   useEffect(() => {
     async function loadDashboardData() {
       setLoading(true)
       try {
-        const [projectsData, tasksData] = await Promise.all([
-          projectsApi.list(),
-          tasksApi.listAll(),
-        ])
+        const projectsData = await projectsApi.list()
         setProjects(Array.isArray(projectsData) ? projectsData : [])
-        setTasks(Array.isArray(tasksData) ? tasksData : [])
       } catch {
         toast({
           title: 'Error loading dashboard',
@@ -73,8 +72,11 @@ export function DashboardPage() {
 
   const handleStatusChange = async (task: Task, newStatus: TaskStatus) => {
     try {
-      const updated = await tasksApi.update(task.id, { status: newStatus })
-      setTasks((prev) => prev.map((t) => (t.id === task.id ? updated : t)))
+      await updateTask.mutateAsync({
+        taskId: task.id,
+        projectId: task.project,
+        data: { status: newStatus },
+      })
       toast({
         title: `Task marked ${newStatus.replace('_', ' ')}`,
         status: 'info',
