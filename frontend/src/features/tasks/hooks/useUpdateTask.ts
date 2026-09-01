@@ -37,7 +37,7 @@ export function useUpdateTask() {
           (oldTasks) => {
             if (!oldTasks) return []
             return oldTasks.map((task) =>
-              task.id === taskId ? { ...task, ...data } : task
+              task.id === taskId ? ({ ...task, ...data } as Task) : task
             )
           }
         )
@@ -50,7 +50,7 @@ export function useUpdateTask() {
           (oldTasks) => {
             if (!oldTasks) return []
             return oldTasks.map((task) =>
-              task.id === taskId ? { ...task, ...data } : task
+              task.id === taskId ? ({ ...task, ...data } as Task) : task
             )
           }
         )
@@ -60,7 +60,8 @@ export function useUpdateTask() {
       if (previousTaskDetail) {
         queryClient.setQueryData<Task>(
           queryKeys.tasks.detail(taskId),
-          (oldTask) => (oldTask ? { ...oldTask, ...data } : oldTask)
+          (oldTask) =>
+            oldTask ? ({ ...oldTask, ...data } as Task) : oldTask
         )
       }
 

@@ -117,7 +117,7 @@ export interface UpdateProjectVariables {
 export interface CreateTaskPayload {
   title: string
   description?: string
-  priority?: string
+  priority?: TaskPriority
   assignee_id?: number | null
   due_date?: string | null
 }
@@ -130,8 +130,8 @@ export interface CreateTaskVariables {
 export interface UpdateTaskPayload {
   title?: string
   description?: string
-  status?: string
-  priority?: string
+  status?: TaskStatus
+  priority?: TaskPriority
   assignee_id?: number | null
   due_date?: string | null
 }

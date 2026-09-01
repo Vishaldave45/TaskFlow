@@ -14,8 +14,6 @@ import {
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { projectsApi } from '@/api/projects'
-import { commentsApi } from '@/api/comments'
-import { activityApi } from '@/api/activity'
 import { PageContainer } from '@/components/layout'
 import { ProjectHeader, ProjectStats, useDeleteProject } from '@/features/projects'
 import {
@@ -34,8 +32,6 @@ import type {
   Task,
   TaskPriority,
   TaskStatus,
-  Comment,
-  ActivityLog,
   ProjectMember,
 } from '@/types'
 
@@ -56,7 +52,7 @@ export function ProjectDetailPage() {
   const deleteTask = useDeleteTask()
 
   // Role Checks
-  const isOwner = currentUser?.id === project?.owner?.id
+  const isOwner = project?.owner?.id === currentUser?.id
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('')
@@ -65,15 +61,17 @@ export function ProjectDetailPage() {
 
   // Modals
   const {
-    isOpen: isTaskModalOpen,
-    onOpen: onOpenTaskModal,
-    onClose: onCloseTaskModal,
-  } = useDisclosure()
-  const {
     isOpen: isMemberModalOpen,
     onOpen: onOpenMemberModal,
     onClose: onCloseMemberModal,
   } = useDisclosure()
+
+  const {
+    isOpen: isTaskModalOpen,
+    onOpen: onOpenTaskModal,
+    onClose: onCloseTaskModal,
+  } = useDisclosure()
+
   const {
     isOpen: isTaskDetailOpen,
     onOpen: onOpenTaskDetail,
@@ -103,11 +101,6 @@ export function ProjectDetailPage() {
   const [editAssignee, setEditAssignee] = useState<string>('')
   const [editDueDate, setEditDueDate] = useState('')
   const [isEditingTask, setIsEditingTask] = useState(false)
-
-  const [taskComments, setTaskComments] = useState<Comment[]>([])
-  const [taskActivity, setTaskActivity] = useState<ActivityLog[]>([])
-  const [newComment, setNewComment] = useState('')
-  const [submittingComment, setSubmittingComment] = useState(false)
 
   // Add Member Form
   const [memberEmail, setMemberEmail] = useState('')
@@ -144,7 +137,7 @@ export function ProjectDetailPage() {
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!taskTitle.trim()) return
+    if (!taskTitle.trim() || !projectId) return
 
     try {
       await createTask.mutateAsync({
@@ -188,7 +181,6 @@ export function ProjectDetailPage() {
       })
       if (selectedTask && selectedTask.id === task.id) {
         setSelectedTask(updated)
-        activityApi.listByTask(task.id).then(setTaskActivity).catch(() => {})
       }
       toast({
         title: `Status: ${newStatus.replace('_', ' ')}`,
@@ -204,7 +196,7 @@ export function ProjectDetailPage() {
     }
   }
 
-  const openTaskDetailModal = async (task: Task) => {
+  const openTaskDetailModal = (task: Task) => {
     setSelectedTask(task)
     setEditTitle(task.title)
     setEditDesc(task.description || '')
@@ -213,17 +205,6 @@ export function ProjectDetailPage() {
     setEditDueDate(task.due_date || '')
     setIsEditingTask(false)
     onOpenTaskDetail()
-
-    try {
-      const [comments, activity] = await Promise.all([
-        commentsApi.listByTask(task.id).catch(() => []),
-        activityApi.listByTask(task.id).catch(() => []),
-      ])
-      setTaskComments(comments)
-      setTaskActivity(activity)
-    } catch {
-      // Non-blocking
-    }
   }
 
   const handleSaveTaskEdits = async () => {
@@ -248,10 +229,6 @@ export function ProjectDetailPage() {
         status: 'success',
         duration: 2500,
       })
-      activityApi
-        .listByTask(selectedTask.id)
-        .then(setTaskActivity)
-        .catch(() => {})
     } catch {
       toast({
         title: 'Update failed',
@@ -279,50 +256,6 @@ export function ProjectDetailPage() {
         title: 'Could not delete task',
         status: 'error',
         duration: 3000,
-      })
-    }
-  }
-
-  const handleAddComment = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedTask || !newComment.trim()) return
-
-    setSubmittingComment(true)
-    try {
-      const comment = await commentsApi.create(selectedTask.id, {
-        content: newComment.trim(),
-      })
-      setTaskComments((prev) => [...prev, comment])
-      setNewComment('')
-      activityApi
-        .listByTask(selectedTask.id)
-        .then(setTaskActivity)
-        .catch(() => {})
-    } catch {
-      toast({
-        title: 'Failed to post comment',
-        status: 'error',
-        duration: 3000,
-      })
-    } finally {
-      setSubmittingComment(false)
-    }
-  }
-
-  const handleDeleteComment = async (commentId: number) => {
-    try {
-      await commentsApi.delete(commentId)
-      setTaskComments((prev) => prev.filter((c) => c.id !== commentId))
-      toast({
-        title: 'Comment deleted',
-        status: 'success',
-        duration: 2000,
-      })
-    } catch {
-      toast({
-        title: 'Could not delete comment',
-        status: 'error',
-        duration: 2000,
       })
     }
   }
@@ -547,13 +480,6 @@ export function ProjectDetailPage() {
         onSaveTaskEdits={handleSaveTaskEdits}
         onDeleteTask={handleDeleteTask}
         isDeletingTask={deleteTask.isPending}
-        taskComments={taskComments}
-        newComment={newComment}
-        setNewComment={setNewComment}
-        onAddComment={handleAddComment}
-        onDeleteComment={handleDeleteComment}
-        submittingComment={submittingComment}
-        taskActivity={taskActivity}
       />
 
       {/* Add Member Modal */}

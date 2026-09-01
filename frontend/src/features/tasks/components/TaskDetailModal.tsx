@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Box,
   Button,
@@ -25,14 +26,19 @@ import {
   Text,
   Textarea,
   Badge,
+  useToast,
 } from '@chakra-ui/react'
 import { Activity, Edit3, FileText, MessageSquare, Trash2 } from 'lucide-react'
 import { MetaLabel, StatusBadge } from '@/components/ui'
 import { TaskComments } from '@/features/comments'
 import { TaskActivityLog } from '@/features/activity'
+import {
+  useTaskComments,
+  useCreateComment,
+  useDeleteComment,
+  useTaskActivity,
+} from '../index'
 import type {
-  ActivityLog,
-  Comment,
   Project,
   ProjectMember,
   Task,
@@ -69,15 +75,6 @@ interface TaskDetailModalProps {
   // Delete
   onDeleteTask: () => void
   isDeletingTask: boolean
-  // Comments
-  taskComments: Comment[]
-  newComment: string
-  setNewComment: (val: string) => void
-  onAddComment: (e: React.FormEvent) => void
-  onDeleteComment: (commentId: number) => void
-  submittingComment: boolean
-  // Activity
-  taskActivity: ActivityLog[]
 }
 
 export function TaskDetailModal({
@@ -105,18 +102,64 @@ export function TaskDetailModal({
   onSaveTaskEdits,
   onDeleteTask,
   isDeletingTask,
-  taskComments,
-  newComment,
-  setNewComment,
-  onAddComment,
-  onDeleteComment,
-  submittingComment,
-  taskActivity,
 }: TaskDetailModalProps) {
+  const toast = useToast()
+  const [newComment, setNewComment] = useState('')
+
+  // TanStack Queries & Mutations for Comments & Activity
+  const { data: comments = [] } = useTaskComments(selectedTask?.id)
+  const { data: activity = [] } = useTaskActivity(selectedTask?.id)
+  const createComment = useCreateComment()
+  const deleteComment = useDeleteComment()
+
   if (!selectedTask) return null
 
   const canDelete =
     isOwner || selectedTask.creator?.id === currentUser?.id
+
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newComment.trim()) return
+
+    try {
+      await createComment.mutateAsync({
+        taskId: selectedTask.id,
+        content: newComment.trim(),
+      })
+      setNewComment('')
+      toast({
+        title: 'Comment added',
+        status: 'success',
+        duration: 2000,
+      })
+    } catch {
+      toast({
+        title: 'Failed to add comment',
+        status: 'error',
+        duration: 3000,
+      })
+    }
+  }
+
+  const handleDeleteComment = async (commentId: number) => {
+    try {
+      await deleteComment.mutateAsync({
+        commentId,
+        taskId: selectedTask.id,
+      })
+      toast({
+        title: 'Comment deleted',
+        status: 'info',
+        duration: 2000,
+      })
+    } catch {
+      toast({
+        title: 'Could not delete comment',
+        status: 'error',
+        duration: 2000,
+      })
+    }
+  }
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="xl" isCentered>
@@ -138,97 +181,125 @@ export function TaskDetailModal({
             align="center"
             p={3}
             bg="surface.subtle"
-            border="1px solid"
-            borderColor="border.default"
             borderRadius="sm"
-            mb={5}
+            mb={4}
           >
             <HStack spacing={2}>
-              <Text
-                fontSize="2xs"
-                fontFamily="mono"
-                fontWeight="700"
-                color="ink.secondary"
-              >
-                STATUS:
+              <Text fontSize="xs" fontWeight="600" color="ink.secondary">
+                Status:
               </Text>
-              <Select
-                size="sm"
-                w="140px"
-                value={selectedTask.status}
-                onChange={(e) =>
-                  onStatusChange(selectedTask, e.target.value as TaskStatus)
-                }
-              >
-                <option value="TODO">To Do</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="DONE">Done</option>
-              </Select>
+              <StatusBadge status={selectedTask.status} type="status" />
             </HStack>
-
-            <StatusBadge priority={selectedTask.priority} type="priority" />
+            <HStack spacing={1}>
+              <Button
+                size="2xs"
+                variant={selectedTask.status === 'TODO' ? 'solid' : 'ghost'}
+                onClick={() => onStatusChange(selectedTask, 'TODO')}
+              >
+                To Do
+              </Button>
+              <Button
+                size="2xs"
+                variant={
+                  selectedTask.status === 'IN_PROGRESS' ? 'solid' : 'ghost'
+                }
+                onClick={() => onStatusChange(selectedTask, 'IN_PROGRESS')}
+              >
+                In Progress
+              </Button>
+              <Button
+                size="2xs"
+                variant={selectedTask.status === 'DONE' ? 'solid' : 'ghost'}
+                onClick={() => onStatusChange(selectedTask, 'DONE')}
+              >
+                Done
+              </Button>
+            </HStack>
           </Flex>
 
-          {/* Sub-Tabs: Details & Edit, Comments, Activity */}
           <Tabs variant="line">
             <TabList mb={4}>
-              <Tab fontSize="xs" fontWeight="600" gap={1.5}>
-                <FileText size={13} /> Details
+              <Tab fontSize="xs" fontWeight="600">
+                <HStack spacing={1.5}>
+                  <FileText size={13} />
+                  <Text>Overview</Text>
+                </HStack>
               </Tab>
-              <Tab fontSize="xs" fontWeight="600" gap={1.5}>
-                <MessageSquare size={13} /> Notes ({taskComments.length})
+              <Tab fontSize="xs" fontWeight="600">
+                <HStack spacing={1.5}>
+                  <MessageSquare size={13} />
+                  <Text>Notes ({comments.length})</Text>
+                </HStack>
               </Tab>
-              <Tab fontSize="xs" fontWeight="600" gap={1.5}>
-                <Activity size={13} /> Audit ({taskActivity.length})
+              <Tab fontSize="xs" fontWeight="600">
+                <HStack spacing={1.5}>
+                  <Activity size={13} />
+                  <Text>Activity ({activity.length})</Text>
+                </HStack>
               </Tab>
             </TabList>
 
             <TabPanels>
-              {/* Tab 1: Details & Edit */}
+              {/* Tab 1: Overview */}
               <TabPanel p={1}>
                 {!isEditingTask ? (
                   <Stack spacing={4}>
                     <Box>
                       <MetaLabel variant="subtle" mb={1}>
-                        Description
+                        DESCRIPTION
                       </MetaLabel>
-                      <Text
-                        fontSize="xs"
-                        color="ink.primary"
-                        whiteSpace="pre-wrap"
-                      >
+                      <Text fontSize="xs" color="ink.primary" whiteSpace="pre-wrap">
                         {selectedTask.description || 'No description provided.'}
                       </Text>
                     </Box>
 
-                    <Divider borderColor="border.subtle" />
-
-                    <SimpleGrid columns={2} spacing={4} fontSize="xs">
+                    <SimpleGrid columns={2} spacing={3}>
                       <Box>
-                        <MetaLabel variant="subtle">Assignee</MetaLabel>
-                        <Text color="ink.primary" fontWeight="600" mt={1}>
+                        <MetaLabel variant="subtle" mb={1}>
+                          PRIORITY
+                        </MetaLabel>
+                        <StatusBadge
+                          priority={selectedTask.priority}
+                          type="priority"
+                        />
+                      </Box>
+                      <Box>
+                        <MetaLabel variant="subtle" mb={1}>
+                          ASSIGNEE
+                        </MetaLabel>
+                        <Text fontSize="xs" color="ink.primary">
                           {selectedTask.assignee
                             ? selectedTask.assignee.username
                             : 'Unassigned'}
                         </Text>
                       </Box>
-
                       <Box>
-                        <MetaLabel variant="subtle">Due Date</MetaLabel>
-                        <Text
-                          color="ink.primary"
-                          fontWeight="600"
-                          fontFamily="mono"
-                          mt={1}
-                        >
+                        <MetaLabel variant="subtle" mb={1}>
+                          DUE DATE
+                        </MetaLabel>
+                        <Text fontSize="xs" color="ink.primary">
                           {selectedTask.due_date
-                            ? new Date(selectedTask.due_date).toLocaleDateString()
-                            : 'None'}
+                            ? new Date(
+                                selectedTask.due_date
+                              ).toLocaleDateString()
+                            : 'No deadline'}
+                        </Text>
+                      </Box>
+                      <Box>
+                        <MetaLabel variant="subtle" mb={1}>
+                          CREATED BY
+                        </MetaLabel>
+                        <Text fontSize="xs" color="ink.primary">
+                          {selectedTask.creator
+                            ? selectedTask.creator.username
+                            : 'System'}
                         </Text>
                       </Box>
                     </SimpleGrid>
 
-                    <Flex justify="flex-end" pt={2}>
+                    <Divider borderColor="border.subtle" />
+
+                    <Flex justify="flex-end">
                       <Button
                         size="xs"
                         variant="outline"
@@ -240,16 +311,9 @@ export function TaskDetailModal({
                     </Flex>
                   </Stack>
                 ) : (
-                  /* Edit Mode Form */
                   <Stack spacing={3}>
                     <FormControl isRequired>
-                      <FormLabel
-                        fontSize="2xs"
-                        fontFamily="mono"
-                        fontWeight="700"
-                        color="ink.secondary"
-                        textTransform="uppercase"
-                      >
+                      <FormLabel fontSize="2xs" fontWeight="700">
                         Title
                       </FormLabel>
                       <Input
@@ -260,32 +324,20 @@ export function TaskDetailModal({
                     </FormControl>
 
                     <FormControl>
-                      <FormLabel
-                        fontSize="2xs"
-                        fontFamily="mono"
-                        fontWeight="700"
-                        color="ink.secondary"
-                        textTransform="uppercase"
-                      >
+                      <FormLabel fontSize="2xs" fontWeight="700">
                         Description
                       </FormLabel>
                       <Textarea
                         size="sm"
-                        rows={3}
                         value={editDesc}
                         onChange={(e) => setEditDesc(e.target.value)}
+                        rows={3}
                       />
                     </FormControl>
 
-                    <HStack spacing={3}>
+                    <SimpleGrid columns={2} spacing={3}>
                       <FormControl>
-                        <FormLabel
-                          fontSize="2xs"
-                          fontFamily="mono"
-                          fontWeight="700"
-                          color="ink.secondary"
-                          textTransform="uppercase"
-                        >
+                        <FormLabel fontSize="2xs" fontWeight="700">
                           Priority
                         </FormLabel>
                         <Select
@@ -302,40 +354,28 @@ export function TaskDetailModal({
                       </FormControl>
 
                       <FormControl>
-                        <FormLabel
-                          fontSize="2xs"
-                          fontFamily="mono"
-                          fontWeight="700"
-                          color="ink.secondary"
-                          textTransform="uppercase"
-                        >
+                        <FormLabel fontSize="2xs" fontWeight="700">
                           Due Date
                         </FormLabel>
                         <Input
-                          size="sm"
                           type="date"
+                          size="sm"
                           value={editDueDate}
                           onChange={(e) => setEditDueDate(e.target.value)}
                         />
                       </FormControl>
-                    </HStack>
+                    </SimpleGrid>
 
                     <FormControl>
-                      <FormLabel
-                        fontSize="2xs"
-                        fontFamily="mono"
-                        fontWeight="700"
-                        color="ink.secondary"
-                        textTransform="uppercase"
-                      >
+                      <FormLabel fontSize="2xs" fontWeight="700">
                         Assignee
                       </FormLabel>
                       <Select
                         size="sm"
-                        placeholder="Unassigned"
                         value={editAssignee}
                         onChange={(e) => setEditAssignee(e.target.value)}
                       >
+                        <option value="">Unassigned</option>
                         {project?.owner && (
                           <option value={project.owner.id}>
                             {project.owner.username} (Owner)
@@ -373,20 +413,20 @@ export function TaskDetailModal({
               {/* Tab 2: Comments */}
               <TabPanel p={1}>
                 <TaskComments
-                  comments={taskComments}
+                  comments={comments}
                   currentUser={currentUser}
                   isOwner={isOwner}
                   newComment={newComment}
                   setNewComment={setNewComment}
-                  onAddComment={onAddComment}
-                  onDeleteComment={onDeleteComment}
-                  submittingComment={submittingComment}
+                  onAddComment={handleAddComment}
+                  onDeleteComment={handleDeleteComment}
+                  submittingComment={createComment.isPending}
                 />
               </TabPanel>
 
               {/* Tab 3: Activity Timeline */}
               <TabPanel p={1}>
-                <TaskActivityLog activity={taskActivity} />
+                <TaskActivityLog activity={activity} />
               </TabPanel>
             </TabPanels>
           </Tabs>

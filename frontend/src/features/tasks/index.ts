@@ -10,3 +10,8 @@ export * from './hooks/useTask'
 export * from './hooks/useCreateTask'
 export * from './hooks/useUpdateTask'
 export * from './hooks/useDeleteTask'
+export * from './hooks/useTaskComments'
+export * from './hooks/useCreateComment'
+export * from './hooks/useDeleteComment'
+export * from './hooks/useTaskActivity'
+
