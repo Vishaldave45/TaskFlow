@@ -104,6 +104,45 @@ export function DashboardPage() {
     (t) => t.due_date && new Date(t.due_date) < new Date(new Date().setHours(0, 0, 0, 0))
   )
 
+  // Contextual State-Driven Copy Generators
+  const getTasksCopy = (count: number) => {
+    if (count === 0) return 'Inbox clear — nothing on your plate right now'
+    if (count === 1) return '1 task assigned and ready to tackle'
+    if (count <= 3) return `${count} tasks assigned across your active projects`
+    return `${count} tasks in flight — recommended to prioritize`
+  }
+
+  const getVelocityCopy = (pct: number, completed: number, total: number) => {
+    if (total === 0) return 'No tasks created yet to track velocity'
+    if (pct >= 80) return `Strong sprint pace — ${completed} of ${total} wrapped`
+    if (pct >= 50) return `On track — ${completed} of ${total} completed`
+    if (pct > 0) return `Sprint in motion — ${completed} of ${total} finished`
+    return `Sprint kicked off — 0 of ${total} done`
+  }
+
+  const getWorkspacesCopy = (count: number) => {
+    if (count === 0) return 'No active workspaces initialized'
+    if (count === 1) return '1 active workspace connected'
+    return `${count} projects across owned and team workspaces`
+  }
+
+  const getOverdueCopy = (overdueCount: number, highPriorityCount: number) => {
+    if (overdueCount === 0 && highPriorityCount === 0) return 'All clean — no overdue or urgent tasks'
+    if (overdueCount === 0) return `${highPriorityCount} high-priority tasks on schedule`
+    if (overdueCount === 1) return '1 item is past due — tackle this first'
+    return `${overdueCount} items past due — attention required`
+  }
+
+  const getDashboardDescription = () => {
+    if (overdueTasks.length > 0) {
+      return `${overdueTasks.length} ${overdueTasks.length === 1 ? 'task needs' : 'tasks need'} attention across ${projects.length} ${projects.length === 1 ? 'workspace' : 'workspaces'}.`
+    }
+    if (myPendingTasks.length > 0) {
+      return `You have ${myPendingTasks.length} active ${myPendingTasks.length === 1 ? 'task' : 'tasks'} in progress across ${projects.length} ${projects.length === 1 ? 'workspace' : 'workspaces'}.`
+    }
+    return `All tasks are up to date across ${projects.length} ${projects.length === 1 ? 'workspace' : 'workspaces'}.`
+  }
+
   if (loading) {
     return (
       <PageContainer size="standard">
@@ -129,12 +168,12 @@ export function DashboardPage() {
     <PageContainer size="standard">
       {/* Editorial Page Header */}
       <PageHeader
-        category="EXECUTIVE OVERVIEW"
-        title="Workspace Dashboard"
-        description="Consolidated sprint metrics, high-priority allocations, and workspace tracking."
+        category="DASHBOARD"
+        title="Dashboard"
+        description={getDashboardDescription()}
         badge={
           <Badge variant="brand" fontSize="3xs">
-            <Zap size={10} style={{ marginRight: 3 }} /> LIVE PULSE
+            <Zap size={10} style={{ marginRight: 3 }} /> LIVE SYNC
           </Badge>
         }
         actions={
@@ -161,7 +200,7 @@ export function DashboardPage() {
             {myPendingTasks.length}
           </Text>
           <Text fontSize="3xs" color="ink.secondary" mt={0.5}>
-            Assigned to you across all projects
+            {getTasksCopy(myPendingTasks.length)}
           </Text>
         </WorkroomSurface>
 
@@ -174,7 +213,7 @@ export function DashboardPage() {
             {overallVelocity}%
           </Text>
           <Text fontSize="3xs" color="ink.secondary" mt={0.5}>
-            {completedTasks} of {totalTasks} tasks finished
+            {getVelocityCopy(overallVelocity, completedTasks, totalTasks)}
           </Text>
         </WorkroomSurface>
 
@@ -187,20 +226,20 @@ export function DashboardPage() {
             {projects.length}
           </Text>
           <Text fontSize="3xs" color="ink.secondary" mt={0.5}>
-            Owned & collaboration projects
+            {getWorkspacesCopy(projects.length)}
           </Text>
         </WorkroomSurface>
 
         <WorkroomSurface variant="base" p={3.5}>
           <HStack justify="space-between" mb={1.5}>
             <MetaLabel variant="subtle">URGENT / OVERDUE</MetaLabel>
-            <AlertCircle size={14} color="#DC2626" />
+            <AlertCircle size={14} color={overdueTasks.length > 0 ? '#DC2626' : '#16A34A'} />
           </HStack>
           <Text fontSize="2xl" fontWeight="700" color={overdueTasks.length > 0 ? 'state.error.text' : 'ink.primary'} fontFamily="mono">
             {overdueTasks.length}
           </Text>
           <Text fontSize="3xs" color="ink.secondary" mt={0.5}>
-            {highPriorityTasks.length} high priority allocations
+            {getOverdueCopy(overdueTasks.length, highPriorityTasks.length)}
           </Text>
         </WorkroomSurface>
       </SimpleGrid>
