@@ -12,6 +12,28 @@ dependencies = [
     "django-environ>=0.11.0",
     "psycopg2-binary>=2.9.9",
     "drf-spectacular>=0.27.0",
+    "gunicorn>=22.0.0",
     "pytest>=8.0.0",
     "pytest-django>=4.8.0",
 ]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "C",   # complexity
+    "B",   # flake8-bugbear
+]
+ignore = [
+    "E501", # line too long (handled by formatter)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "config", "core"]
+

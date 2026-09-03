@@ -10,8 +10,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -60,9 +60,6 @@ coverage.xml
 # Operating System
 .DS_Store
 Thumbs.db
-
-# Documentation
-docs/
 
 # Node & Frontend
 node_modules/
