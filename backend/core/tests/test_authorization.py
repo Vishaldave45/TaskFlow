@@ -57,7 +57,8 @@ class TestProjectAuthorization:
         # Should not be in project list
         res = api_client.get("/api/v1/projects/")
         assert res.status_code == status.HTTP_200_OK
-        assert len(res.data.get('results', res.data)) == 0
+        results = res.data.get('results', res.data) if isinstance(res.data, dict) else res.data
+        assert len(results) == 0
 
         # Direct access is forbidden / not found
         res_detail = api_client.get(f"/api/v1/projects/{project.id}/")

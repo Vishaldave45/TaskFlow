@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import {
   SimpleGrid,
   Skeleton,
@@ -21,10 +21,12 @@ import {
   TaskFilters,
   TaskCreateModal,
   TaskDetailModal,
+  InfiniteTaskList,
   useTasks,
   useCreateTask,
   useUpdateTask,
   useDeleteTask,
+  useInfiniteProjectTasks,
 } from '@/features/tasks'
 import { MembersModal, MembersPanel } from '@/features/members'
 import type {
@@ -45,11 +47,25 @@ export function ProjectDetailPage() {
   const [members, setMembers] = useState<ProjectMember[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Tasks Query & Mutations
+  // Tasks Query & Mutations (full list for Kanban board)
   const { data: tasks = [] } = useTasks(projectId)
   const createTask = useCreateTask()
   const updateTask = useUpdateTask()
   const deleteTask = useDeleteTask()
+
+  // Infinite scroll query for List View tab
+  const {
+    data: infiniteData,
+    hasNextPage = false,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useInfiniteProjectTasks(projectId)
+
+  // Flatten infinite query pages for the list view
+  const infiniteTasks = useMemo(
+    () => infiniteData?.pages.flatMap((page) => page.results) ?? [],
+    [infiniteData],
+  )
 
   // Role Checks
   const isOwner = project?.owner?.id === currentUser?.id
@@ -326,24 +342,26 @@ export function ProjectDetailPage() {
     }
   }
 
-  // Filter tasks
-  const filteredTasks = Array.isArray(tasks)
-    ? tasks.filter((t) => {
-        const matchesSearch =
-          t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          t.description.toLowerCase().includes(searchQuery.toLowerCase())
-        const matchesPriority =
-          priorityFilter === 'ALL' || t.priority === priorityFilter
-        const matchesAssignee =
-          assigneeFilter === 'ALL' ||
-          (assigneeFilter === 'MY_TASKS'
-            ? t.assignee?.id === currentUser?.id
-            : assigneeFilter === 'UNASSIGNED'
-            ? !t.assignee
-            : t.assignee?.id === Number(assigneeFilter))
-        return matchesSearch && matchesPriority && matchesAssignee
-      })
-    : []
+  // Apply filters to both views
+  const applyFilters = (taskList: Task[]) =>
+    taskList.filter((t) => {
+      const matchesSearch =
+        t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.description.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesPriority =
+        priorityFilter === 'ALL' || t.priority === priorityFilter
+      const matchesAssignee =
+        assigneeFilter === 'ALL' ||
+        (assigneeFilter === 'MY_TASKS'
+          ? t.assignee?.id === currentUser?.id
+          : assigneeFilter === 'UNASSIGNED'
+          ? !t.assignee
+          : t.assignee?.id === Number(assigneeFilter))
+      return matchesSearch && matchesPriority && matchesAssignee
+    })
+
+  const filteredTasks = applyFilters(Array.isArray(tasks) ? tasks : [])
+  const filteredInfiniteTasks = applyFilters(infiniteTasks)
 
   const totalTasks = tasks.length
   const completedTasks = tasks.filter((t) => t.status === 'DONE').length
@@ -405,12 +423,15 @@ export function ProjectDetailPage() {
             Kanban Board ({filteredTasks.length})
           </Tab>
           <Tab fontWeight="600" fontSize="sm">
+            List View ({filteredInfiniteTasks.length})
+          </Tab>
+          <Tab fontWeight="600" fontSize="sm">
             Team Directory ({members.length + 1})
           </Tab>
         </TabList>
 
         <TabPanels>
-          {/* Panel 1: Kanban Board */}
+          {/* Panel 1: Kanban Board — loads ALL tasks for drag-and-drop */}
           <TabPanel p={0}>
             <TaskBoard
               tasks={filteredTasks}
@@ -420,7 +441,20 @@ export function ProjectDetailPage() {
             />
           </TabPanel>
 
-          {/* Panel 2: Team Members */}
+          {/* Panel 2: List View — infinite scroll with pagination */}
+          <TabPanel p={0}>
+            <InfiniteTaskList
+              tasks={filteredInfiniteTasks}
+              currentUser={currentUser}
+              hasNextPage={hasNextPage}
+              isFetchingNextPage={isFetchingNextPage}
+              fetchNextPage={fetchNextPage}
+              onOpenDetail={openTaskDetailModal}
+              onStatusChange={handleStatusChange}
+            />
+          </TabPanel>
+
+          {/* Panel 3: Team Members */}
           <TabPanel p={0}>
             <MembersPanel
               project={project}

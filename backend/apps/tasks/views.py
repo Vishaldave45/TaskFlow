@@ -6,11 +6,13 @@ from .serializers import TaskSerializer
 from .permissions import IsProjectMemberForTask
 from apps.projects.models import Project
 from apps.activity.models import ActivityLog
+from core.pagination import TaskCursorPagination, StandardPagination
 
 class GlobalTaskListView(generics.ListAPIView):
     """List tasks accessible by current user across all projects (assigned, created, or in member projects)."""
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = TaskSerializer
+    pagination_class = TaskCursorPagination
 
     def get_queryset(self):
         user = self.request.user
@@ -29,6 +31,7 @@ class ProjectTaskListCreateView(generics.ListCreateAPIView):
     """List tasks for a specific project or create a new task in that project."""
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = TaskSerializer
+    pagination_class = StandardPagination
 
     def get_queryset(self):
         project_id = self.kwargs.get('project_id')

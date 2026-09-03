@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import {
   Box,
   Button,
@@ -12,11 +12,6 @@ import {
   Flex,
   Heading,
   Progress,
-  IconButton,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
 } from '@chakra-ui/react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import {
@@ -24,16 +19,13 @@ import {
   TrendingUp,
   AlertCircle,
   Zap,
-  CheckCircle2,
-  Clock,
-  MoreVertical,
   ArrowRight,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { projectsApi } from '@/api/projects'
-import { useAllTasks, useUpdateTask } from '@/features/tasks'
+import { useInfiniteAllTasks, useUpdateTask, InfiniteTaskList } from '@/features/tasks'
 import { PageContainer, PageHeader } from '@/components/layout'
-import { WorkroomSurface, MetaLabel, StatusBadge } from '@/components/ui'
+import { WorkroomSurface, MetaLabel } from '@/components/ui'
 import type { Project, Task, TaskStatus } from '@/types'
 
 export function DashboardPage() {
@@ -44,11 +36,20 @@ export function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
 
-  // TanStack Tasks Query & Mutation
+  // Infinite Tasks Query & Mutation
   const {
-    data: tasks = [],
-  } = useAllTasks()
+    data: infiniteData,
+    hasNextPage = false,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useInfiniteAllTasks()
   const updateTask = useUpdateTask()
+
+  // Flatten all pages into a single array
+  const tasks = useMemo(
+    () => infiniteData?.pages.flatMap((page) => page.results) ?? [],
+    [infiniteData],
+  )
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -246,10 +247,10 @@ export function DashboardPage() {
 
       {/* Main Dashboard Grid */}
       <SimpleGrid columns={{ base: 1, lg: 3 }} spacing={6}>
-        {/* Column 1 & 2: Assigned to Me Tasks Ledger */}
+        {/* Column 1 & 2: My Tasks Ledger with Infinite Scroll */}
         <Box gridColumn={{ base: 'span 1', lg: 'span 2' }}>
-          <WorkroomSurface variant="base" p={5}>
-            <Flex justify="space-between" align="center" mb={4} pb={3} borderBottom="1px solid" borderColor="border.subtle">
+          <WorkroomSurface variant="base" p={0} overflow="hidden">
+            <Flex justify="space-between" align="center" px={5} pt={5} pb={3} borderBottom="1px solid" borderColor="border.subtle">
               <HStack spacing={2}>
                 <Heading as="h3" size="sm" color="ink.primary">
                   My Tasks Ledger
@@ -260,104 +261,18 @@ export function DashboardPage() {
               </HStack>
             </Flex>
 
-            <Stack spacing={3}>
-              {myPendingTasks.map((task) => {
-                const isOverdue =
-                  task.due_date &&
-                  new Date(task.due_date) < new Date(new Date().setHours(0, 0, 0, 0))
-
-                return (
-                  <WorkroomSurface
-                    key={task.id}
-                    variant="subtle"
-                    p={3.5}
-                    borderRadius="sm"
-                    border="1px solid"
-                    borderColor="border.default"
-                    _hover={{ borderColor: 'border.dark', boxShadow: 'tactileSm' }}
-                    transition="all 0.1s ease-out"
-                  >
-                    <Flex justify="space-between" align="start" gap={3}>
-                      <Box flex="1">
-                        <HStack spacing={2} mb={1}>
-                          <StatusBadge status={task.status} type="status" />
-                          <StatusBadge priority={task.priority} type="priority" />
-                          <Text fontSize="3xs" fontFamily="mono" color="ink.muted">
-                            PROJECT #{task.project}
-                          </Text>
-                        </HStack>
-
-                        <Text
-                          fontSize="sm"
-                          fontWeight="600"
-                          color="ink.primary"
-                          cursor="pointer"
-                          onClick={() => navigate(`/projects/${task.project}`)}
-                          _hover={{ color: 'brand.primary' }}
-                        >
-                          {task.title}
-                        </Text>
-
-                        {task.description && (
-                          <Text fontSize="xs" color="ink.secondary" noOfLines={1} mt={0.5}>
-                            {task.description}
-                          </Text>
-                        )}
-                      </Box>
-
-                      {/* Right Action Menu */}
-                      <HStack spacing={2}>
-                        <HStack spacing={1} fontSize="3xs" fontFamily="mono" color="ink.muted">
-                          <Clock size={12} color={isOverdue ? '#991B1B' : undefined} />
-                          <Text color={isOverdue ? 'state.error.text' : undefined} fontWeight={isOverdue ? 'bold' : 'normal'}>
-                            {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'NO DUE DATE'}
-                          </Text>
-                        </HStack>
-
-                        <Menu placement="bottom-end">
-                          <MenuButton
-                            as={IconButton}
-                            aria-label="Actions"
-                            icon={<MoreVertical size={13} />}
-                            size="2xs"
-                            variant="ghost"
-                          />
-                          <MenuList minW="130px" p={1} fontSize="xs" boxShadow="tactile" borderColor="border.dark">
-                            <MenuItem
-                              isDisabled={task.status === 'IN_PROGRESS'}
-                              onClick={() => handleStatusChange(task, 'IN_PROGRESS')}
-                            >
-                              Move to In Progress
-                            </MenuItem>
-                            <MenuItem
-                              isDisabled={task.status === 'DONE'}
-                              onClick={() => handleStatusChange(task, 'DONE')}
-                            >
-                              Mark as Done
-                            </MenuItem>
-                            <MenuItem onClick={() => navigate(`/projects/${task.project}`)}>
-                              Go to Project Workspace
-                            </MenuItem>
-                          </MenuList>
-                        </Menu>
-                      </HStack>
-                    </Flex>
-                  </WorkroomSurface>
-                )
-              })}
-
-              {myPendingTasks.length === 0 && (
-                <Box py={8} textAlign="center">
-                  <CheckCircle2 size={24} color="#16A34A" style={{ margin: '0 auto 8px' }} />
-                  <Text fontSize="sm" fontWeight="600" color="ink.primary">
-                    All caught up!
-                  </Text>
-                  <Text fontSize="xs" color="ink.muted" mt={1}>
-                    No active tasks currently assigned to your profile.
-                  </Text>
-                </Box>
-              )}
-            </Stack>
+            {/* Infinite scrolling task list */}
+            <InfiniteTaskList
+              tasks={tasks}
+              currentUser={user}
+              hasNextPage={hasNextPage}
+              isFetchingNextPage={isFetchingNextPage}
+              fetchNextPage={fetchNextPage}
+              onOpenDetail={(task) => navigate(`/projects/${task.project}`)}
+              onStatusChange={handleStatusChange}
+              onNavigateToProject={(projectId) => navigate(`/projects/${projectId}`)}
+              showProject
+            />
           </WorkroomSurface>
         </Box>
 
