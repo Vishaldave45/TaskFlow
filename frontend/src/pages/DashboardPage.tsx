@@ -96,7 +96,6 @@ export function DashboardPage() {
   const myTasks = tasks.filter((t) => t.assignee?.id === user?.id)
   const myPendingTasks = myTasks.filter((t) => t.status !== 'DONE')
   const completedTasks = tasks.filter((t) => t.status === 'DONE').length
-  const inProgressTasks = tasks.filter((t) => t.status === 'IN_PROGRESS').length
   const totalTasks = tasks.length
   const overallVelocity = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 

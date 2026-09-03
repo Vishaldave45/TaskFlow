@@ -22,7 +22,6 @@ import {
   ModalFooter,
   Button,
   HStack,
-  SimpleGrid,
 } from '@chakra-ui/react'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { FolderKanban, Terminal, LogOut, User as UserIcon, LayoutDashboard } from 'lucide-react'

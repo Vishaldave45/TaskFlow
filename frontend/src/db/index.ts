@@ -1,5 +1,4 @@
 import {
-  DbClient,
   collectionOptions,
   useDbClient,
 } from '@tanstack/react-db'

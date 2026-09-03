@@ -4,7 +4,6 @@ import {
   Text,
   Avatar,
   Box,
-  Flex,
   Tooltip,
 } from '@chakra-ui/react'
 import { Calendar, User as UserIcon } from 'lucide-react'

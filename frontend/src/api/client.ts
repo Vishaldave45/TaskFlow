@@ -63,7 +63,7 @@ export async function apiClient<T>(
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> || {}),
+    ...(options.headers as Record<string, string>),
   }
 
   const token = getAccessToken()
